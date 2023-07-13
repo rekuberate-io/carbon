@@ -1,0 +1,12 @@
+apiVersion: core.rekuberate.io/v1alpha1
+kind: CarbonIntensityProvider
+metadata:
+  labels:
+    app.kubernetes.io/name: carbonintensityprovider
+    app.kubernetes.io/instance: carbonintensityprovider-sample
+    app.kubernetes.io/part-of: carbon
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: carbon
+  name: carbonintensityprovider-sample
+spec:
+  interval: 20

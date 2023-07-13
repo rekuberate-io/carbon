@@ -10,4 +10,14 @@ plugins:
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: carbon
 repo: github.com/rekuberate-io/carbon
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: rekuberate.io
+  group: core
+  kind: CarbonIntensityProvider
+  path: github.com/rekuberate-io/carbon/api/v1alpha1
+  version: v1alpha1
 version: "3"
