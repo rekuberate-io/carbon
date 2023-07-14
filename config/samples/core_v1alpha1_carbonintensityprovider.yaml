@@ -11,3 +11,4 @@ metadata:
 spec:
   interval: 12
   provider: electricitymaps
+  signal: average

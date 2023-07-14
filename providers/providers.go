@@ -8,11 +8,23 @@ const (
 )
 
 var (
-	supportedProviders = []ProviderType{WattTime, ElectricityMaps}
+	supportedProviders       = []ProviderType{WattTime, ElectricityMaps}
+	supportedEmissionSignals = []EmissionsSignal{Average, Marginal}
 )
 
 func GetSupportedProviders() []ProviderType {
 	return supportedProviders
+}
+
+type EmissionsSignal string
+
+const (
+	Average  EmissionsSignal = "average"
+	Marginal EmissionsSignal = "marginal"
+)
+
+func GetSupportedEmissionSignals() []EmissionsSignal {
+	return supportedEmissionSignals
 }
 
 type Provider interface {

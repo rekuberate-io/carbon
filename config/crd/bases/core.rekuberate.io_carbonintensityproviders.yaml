@@ -19,6 +19,9 @@ spec:
     - jsonPath: .spec.provider
       name: Provider
       type: string
+    - jsonPath: .spec.signal
+      name: Signal
+      type: string
     - jsonPath: .spec.interval
       name: Interval(Hours)
       type: string
@@ -76,9 +79,16 @@ spec:
                 - watttime
                 - electricitymaps
                 type: string
+              signal:
+                default: average
+                enum:
+                - average
+                - marginal
+                type: string
             required:
             - interval
             - provider
+            - signal
             type: object
           status:
             description: CarbonIntensityProviderStatus defines the observed state

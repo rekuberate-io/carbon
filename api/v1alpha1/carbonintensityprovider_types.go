@@ -37,10 +37,13 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:ExclusiveMaximum=false
 	RefreshIntervalInHours *int32 `json:"interval"`
 
-	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=watttime;electricitymaps
 	// +kubebuilder:default:=electricitymaps
 	Provider string `json:"provider"`
+
+	// +kubebuilder:validation:Enum=average;marginal
+	// +kubebuilder:default:=average
+	Signal string `json:"signal"`
 
 	Config *v1.SecretReference `json:"config,omitempty"`
 }
@@ -59,6 +62,7 @@ type CarbonIntensityProviderStatus struct {
 
 // CarbonIntensityProvider is the Schema for the carbonintensityproviders API
 // +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
+// +kubebuilder:printcolumn:name="Signal",type=string,JSONPath=`.spec.signal`
 // +kubebuilder:printcolumn:name="Interval(Hours)",type=string,JSONPath=`.spec.interval`
 // +kubebuilder:printcolumn:name="Last Update",type=string,JSONPath=`.status.lastUpdate`
 // +kubebuilder:printcolumn:name="Next Update",type=string,JSONPath=`.status.nextUpdate`
