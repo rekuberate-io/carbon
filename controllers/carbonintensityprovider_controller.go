@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/rekuberate-io/carbon/providers"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"net"
@@ -50,11 +51,6 @@ type CarbonIntensityProviderReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the CarbonIntensityProvider object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -78,17 +74,14 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 
 	logger.Info("retrieved ip address", "ipAddress", ipAddress)
 
-	//deepCopy := *provider.DeepCopy()
-	//deepCopy.Status.LastUpdate = &metav1.Time{Time: time.Now()}
-	//
-	//if err := r.Status().Update(ctx, &deepCopy); err != nil {
-	//	namespacedName := fmt.Sprintf("%v/%v", provider.Namespace, provider.Name)
-	//	logger.Error(err, "failed to update provider's status", "provider", namespacedName)
-	//	return ctrl.Result{}, err
-	//}
+	providerType := providers.ProviderType(provider.Spec.Provider)
+	logger.Info(string(providerType))
+
+	requeueAfter := time.Hour * time.Duration(*provider.Spec.RefreshIntervalInHours)
 
 	patch := client.MergeFrom(provider.DeepCopy())
 	provider.Status.LastUpdate = &metav1.Time{Time: time.Now()}
+	provider.Status.NextUpdate = &metav1.Time{Time: time.Now().Add(requeueAfter)}
 	err = r.Status().Patch(ctx, &provider, patch)
 	if err != nil {
 		namespacedName := fmt.Sprintf("%v/%v", provider.Namespace, provider.Name)
@@ -96,7 +89,6 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, err
 	}
 
-	requeueAfter := time.Hour * time.Duration(*provider.Spec.RefreshIntervalInHours)
 	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 

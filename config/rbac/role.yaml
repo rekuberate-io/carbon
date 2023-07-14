@@ -1,0 +1,40 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - carbonintensityproviders
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - carbonintensityproviders/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - carbonintensityproviders/status
+  verbs:
+  - get
+  - patch
+  - update

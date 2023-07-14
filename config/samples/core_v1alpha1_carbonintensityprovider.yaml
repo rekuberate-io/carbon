@@ -9,4 +9,5 @@ metadata:
     app.kubernetes.io/created-by: carbon
   name: carbonintensityprovider-sample
 spec:
-  interval: 20
+  interval: 12
+  provider: electricitymaps
