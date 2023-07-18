@@ -10,9 +10,13 @@ metadata:
   name: carbonintensityprovider-sample
 spec:
   interval: 12
-  provider: watttime
+  provider: electricitymaps
   emissionsType: marginal
   watttime :
     username: rekuberate_test
+    region: CAISO_NORTH
     password:
       name: watttime-password
+  electricitymaps:
+    apikey:
+      name: electricitymaps-apikey

@@ -20,3 +20,4 @@
 # Go workspace file
 go.work
 /config/samples/core_v1alpha_watttimepassword.yaml
+/config/samples/core_v1alpha_electricitymaps_apikey.yaml

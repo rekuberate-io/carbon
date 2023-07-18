@@ -45,7 +45,8 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:default:=average
 	EmissionsType string `json:"emissionsType"`
 
-	WattTimeConfiguration WattTimeConfigurationSpec `json:"watttime,omitempty"`
+	WattTimeConfiguration        *WattTimeConfigurationSpec        `json:"watttime,omitempty"`
+	ElectricityMapsConfiguration *ElectricityMapsConfigurationSpec `json:"electricitymaps,omitempty"`
 }
 
 // CarbonIntensityProviderStatus defines the observed state of CarbonIntensityProvider
@@ -58,8 +59,13 @@ type CarbonIntensityProviderStatus struct {
 }
 
 type WattTimeConfigurationSpec struct {
-	Username string              `json:"username,omitempty"`
-	Password *v1.SecretReference `json:"password,omitempty"`
+	Username string              `json:"username"`
+	Region   string              `json:"region"`
+	Password *v1.SecretReference `json:"password"`
+}
+
+type ElectricityMapsConfigurationSpec struct {
+	ApiKey *v1.SecretReference `json:"apikey,omitempty"`
 }
 
 //+kubebuilder:object:root=true

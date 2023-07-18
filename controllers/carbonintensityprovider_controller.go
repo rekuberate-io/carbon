@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/rekuberate-io/carbon/providers"
 	v1core "k8s.io/api/core/v1"
@@ -74,6 +75,11 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 
 	switch providerType {
 	case providers.WattTime:
+		if cip.Spec.WattTimeConfiguration == nil {
+			err = errors.New("missing configuration in yaml")
+			break
+		}
+
 		passwordRef := cip.Spec.WattTimeConfiguration.Password
 		objectKey := client.ObjectKey{
 			Namespace: req.Namespace,
@@ -94,6 +100,11 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		password := string(secret.Data["password"])
 		provider, err = providers.NewWattTimeProvider(ctx, cip.Spec.WattTimeConfiguration.Username, password)
 	case providers.ElectricityMaps:
+		if cip.Spec.ElectricityMapsConfiguration == nil {
+			err = errors.New("missing configuration in yaml")
+			break
+		}
+
 		provider, err = providers.NewElectricityMapsProvider()
 	}
 
