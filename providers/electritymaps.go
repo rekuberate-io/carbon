@@ -1,17 +1,18 @@
 package providers
 
 type ElectricityMapsProvider struct {
-	BaseProvider
 }
 
-func NewElectricityMapsProvider(signal EmissionsSignal) (*ElectricityMapsProvider, error) {
-	return &ElectricityMapsProvider{BaseProvider{Signal: signal}}, nil
+func NewElectricityMapsProvider() (*ElectricityMapsProvider, error) {
+	return &ElectricityMapsProvider{}, nil
 }
 
-func (p *ElectricityMapsProvider) GetCurrent() {
+func (p *ElectricityMapsProvider) GetCurrent(emissionsType EmissionsType) (string, error) {
 
+	return "", nil
 }
 
-func (p *ElectricityMapsProvider) GetForecast() {
+func (p *ElectricityMapsProvider) GetForecast(emissionsType EmissionsType) (string, error) {
 
+	return "", nil
 }

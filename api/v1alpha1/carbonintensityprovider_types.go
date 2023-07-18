@@ -43,9 +43,9 @@ type CarbonIntensityProviderSpec struct {
 
 	// +kubebuilder:validation:Enum=average;marginal
 	// +kubebuilder:default:=average
-	Signal string `json:"signal"`
+	EmissionsType string `json:"emissionsType"`
 
-	Config *v1.SecretReference `json:"config,omitempty"`
+	WattTimeConfiguration WattTimeConfigurationSpec `json:"watttime,omitempty"`
 }
 
 // CarbonIntensityProviderStatus defines the observed state of CarbonIntensityProvider
@@ -57,12 +57,17 @@ type CarbonIntensityProviderStatus struct {
 	NextUpdate *metav1.Time `json:"nextUpdate,omitempty"`
 }
 
+type WattTimeConfigurationSpec struct {
+	Username string              `json:"username,omitempty"`
+	Password *v1.SecretReference `json:"password,omitempty"`
+}
+
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // CarbonIntensityProvider is the Schema for the carbonintensityproviders API
 // +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
-// +kubebuilder:printcolumn:name="Signal",type=string,JSONPath=`.spec.signal`
+// +kubebuilder:printcolumn:name="Emissions Type",type=string,JSONPath=`.spec.emissionsType`
 // +kubebuilder:printcolumn:name="Interval(Hours)",type=string,JSONPath=`.spec.interval`
 // +kubebuilder:printcolumn:name="Last Update",type=string,JSONPath=`.status.lastUpdate`
 // +kubebuilder:printcolumn:name="Next Update",type=string,JSONPath=`.status.nextUpdate`

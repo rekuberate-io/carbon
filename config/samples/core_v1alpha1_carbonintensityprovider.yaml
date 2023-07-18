@@ -10,5 +10,9 @@ metadata:
   name: carbonintensityprovider-sample
 spec:
   interval: 12
-  provider: electricitymaps
-  signal: average
+  provider: watttime
+  emissionsType: marginal
+  watttime :
+    username: rekuberate_test
+    password:
+      name: watttime-password

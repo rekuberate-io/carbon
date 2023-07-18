@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rekuberate-io/carbon/providers"
+	v1core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"net"
@@ -55,9 +56,10 @@ type CarbonIntensityProviderReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("controller")
+	var err error
 
 	var cip corev1alpha1.CarbonIntensityProvider
-	if err := r.Get(ctx, req.NamespacedName, &cip); err != nil {
+	if err = r.Get(ctx, req.NamespacedName, &cip); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -66,15 +68,45 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, err
 	}
 
+	var provider providers.Provider
 	providerType := providers.ProviderType(cip.Spec.Provider)
-	emissionsSignal := providers.EmissionsSignal(cip.Spec.Signal)
-	provider, err := providers.NewProvider(providerType, emissionsSignal)
+	emissionsType := providers.EmissionsType(cip.Spec.EmissionsType)
+
+	switch providerType {
+	case providers.WattTime:
+		passwordRef := cip.Spec.WattTimeConfiguration.Password
+		objectKey := client.ObjectKey{
+			Namespace: req.Namespace,
+			Name:      passwordRef.Name,
+		}
+
+		var secret v1core.Secret
+		if err := r.Get(ctx, objectKey, &secret); err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.Error(err, "finding secret failed")
+				return ctrl.Result{}, nil
+			}
+
+			logger.Error(err, "fetching secret failed")
+			return ctrl.Result{}, err
+		}
+
+		password := string(secret.Data["password"])
+		provider, err = providers.NewWattTimeProvider(ctx, cip.Spec.WattTimeConfiguration.Username, password)
+	case providers.ElectricityMaps:
+		provider, err = providers.NewElectricityMapsProvider()
+	}
+
 	if err != nil {
 		logger.Error(err, "unable to initialize provider", "providerType", providerType)
 		return ctrl.Result{}, nil
 	}
 
-	provider.GetCurrent()
+	_, err = provider.GetCurrent(emissionsType)
+	if err != nil {
+		logger.Error(err, "request to provider failed", "providerType", providerType)
+		return ctrl.Result{}, nil
+	}
 
 	requeueAfter := time.Hour * time.Duration(*cip.Spec.RefreshIntervalInHours)
 

@@ -19,8 +19,8 @@ spec:
     - jsonPath: .spec.provider
       name: Provider
       type: string
-    - jsonPath: .spec.signal
-      name: Signal
+    - jsonPath: .spec.emissionsType
+      name: Emissions Type
       type: string
     - jsonPath: .spec.interval
       name: Interval(Hours)
@@ -53,20 +53,12 @@ spec:
             description: CarbonIntensityProviderSpec defines the desired state of
               CarbonIntensityProvider
             properties:
-              config:
-                description: SecretReference represents a Secret Reference. It has
-                  enough information to retrieve secret in any namespace
-                properties:
-                  name:
-                    description: name is unique within a namespace to reference a
-                      secret resource.
-                    type: string
-                  namespace:
-                    description: namespace defines the space within which the secret
-                      name must be unique.
-                    type: string
-                type: object
-                x-kubernetes-map-type: atomic
+              emissionsType:
+                default: average
+                enum:
+                - average
+                - marginal
+                type: string
               interval:
                 default: 12
                 format: int32
@@ -79,16 +71,29 @@ spec:
                 - watttime
                 - electricitymaps
                 type: string
-              signal:
-                default: average
-                enum:
-                - average
-                - marginal
-                type: string
+              watttime:
+                properties:
+                  password:
+                    description: SecretReference represents a Secret Reference. It
+                      has enough information to retrieve secret in any namespace
+                    properties:
+                      name:
+                        description: name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  username:
+                    type: string
+                type: object
             required:
+            - emissionsType
             - interval
             - provider
-            - signal
             type: object
           status:
             description: CarbonIntensityProviderStatus defines the observed state

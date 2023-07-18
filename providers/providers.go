@@ -8,47 +8,26 @@ const (
 )
 
 var (
-	supportedProviders       = []ProviderType{WattTime, ElectricityMaps}
-	supportedEmissionSignals = []EmissionsSignal{Average, Marginal}
+	supportedProviders     = []ProviderType{WattTime, ElectricityMaps}
+	supportedEmissionTypes = []EmissionsType{Average, Marginal}
 )
 
 func GetSupportedProviders() []ProviderType {
 	return supportedProviders
 }
 
-type EmissionsSignal string
+type EmissionsType string
 
 const (
-	Average  EmissionsSignal = "average"
-	Marginal EmissionsSignal = "marginal"
+	Average  EmissionsType = "average"
+	Marginal EmissionsType = "marginal"
 )
 
-func GetSupportedEmissionSignals() []EmissionsSignal {
-	return supportedEmissionSignals
+func GetSupportedEmissionsTypes() []EmissionsType {
+	return supportedEmissionTypes
 }
 
 type Provider interface {
-	GetCurrent()
-	GetForecast()
-}
-
-type BaseProvider struct {
-	Signal EmissionsSignal
-}
-
-func NewProvider(providerType ProviderType, signal EmissionsSignal, config ...string) (provider Provider, err error) {
-	switch providerType {
-	case WattTime:
-		provider, err = NewWattTimeProvider(signal)
-		if err != nil {
-			return nil, err
-		}
-	case ElectricityMaps:
-		provider, err = NewElectricityMapsProvider(signal)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return provider, nil
+	GetCurrent(emissionsType EmissionsType) (string, error)
+	GetForecast(emissionsType EmissionsType) (string, error)
 }
