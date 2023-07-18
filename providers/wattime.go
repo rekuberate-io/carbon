@@ -1,9 +1,23 @@
 package providers
 
-type wattTimeProvider struct {
+type WattTimeProvider struct {
+	BaseProvider
+	Username string
+	ApiKey   string
 }
 
-func newWattTimeProvider() (*Provider, error) {
+func NewWattTimeProvider(signal EmissionsSignal, username string, apiKey string) (*WattTimeProvider, error) {
+	return &WattTimeProvider{
+		BaseProvider{Signal: signal},
+		username,
+		apiKey,
+	}, nil
+}
 
-	return nil, nil
+func (p *WattTimeProvider) GetCurrent() {
+
+}
+
+func (p *WattTimeProvider) GetForecast() {
+
 }

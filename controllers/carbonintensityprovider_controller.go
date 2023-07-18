@@ -56,8 +56,8 @@ type CarbonIntensityProviderReconciler struct {
 func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("controller")
 
-	var provider corev1alpha1.CarbonIntensityProvider
-	if err := r.Get(ctx, req.NamespacedName, &provider); err != nil {
+	var cip corev1alpha1.CarbonIntensityProvider
+	if err := r.Get(ctx, req.NamespacedName, &cip); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -66,25 +66,24 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, err
 	}
 
-	ipAddress, err := r.getIpAddress()
+	providerType := providers.ProviderType(cip.Spec.Provider)
+	emissionsSignal := providers.EmissionsSignal(cip.Spec.Signal)
+	provider, err := providers.NewProvider(providerType, emissionsSignal)
 	if err != nil {
-		logger.Error(err, "unable to fetch external ip address")
-		return ctrl.Result{}, err
+		logger.Error(err, "unable to initialize provider", "providerType", providerType)
+		return ctrl.Result{}, nil
 	}
 
-	logger.Info("retrieved ip address", "ipAddress", ipAddress)
+	provider.GetCurrent()
 
-	providerType := providers.ProviderType(provider.Spec.Provider)
-	logger.Info(string(providerType))
+	requeueAfter := time.Hour * time.Duration(*cip.Spec.RefreshIntervalInHours)
 
-	requeueAfter := time.Hour * time.Duration(*provider.Spec.RefreshIntervalInHours)
-
-	patch := client.MergeFrom(provider.DeepCopy())
-	provider.Status.LastUpdate = &metav1.Time{Time: time.Now()}
-	provider.Status.NextUpdate = &metav1.Time{Time: time.Now().Add(requeueAfter)}
-	err = r.Status().Patch(ctx, &provider, patch)
+	patch := client.MergeFrom(cip.DeepCopy())
+	cip.Status.LastUpdate = &metav1.Time{Time: time.Now()}
+	cip.Status.NextUpdate = &metav1.Time{Time: time.Now().Add(requeueAfter)}
+	err = r.Status().Patch(ctx, &cip, patch)
 	if err != nil {
-		namespacedName := fmt.Sprintf("%v/%v", provider.Namespace, provider.Name)
+		namespacedName := fmt.Sprintf("%v/%v", cip.Namespace, cip.Name)
 		logger.Error(err, "failed to patch provider's status", "provider", namespacedName)
 		return ctrl.Result{}, err
 	}

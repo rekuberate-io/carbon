@@ -28,18 +28,23 @@ func GetSupportedEmissionSignals() []EmissionsSignal {
 }
 
 type Provider interface {
-	GetCarbonIntensity()
+	GetCurrent()
+	GetForecast()
 }
 
-func NewProvider(providerType ProviderType, config ...string) (provider *Provider, err error) {
+type BaseProvider struct {
+	Signal EmissionsSignal
+}
+
+func NewProvider(providerType ProviderType, signal EmissionsSignal, config ...string) (provider Provider, err error) {
 	switch providerType {
 	case WattTime:
-		provider, err = newWattTimeProvider()
+		provider, err = NewWattTimeProvider(signal)
 		if err != nil {
 			return nil, err
 		}
 	case ElectricityMaps:
-		provider, err = newElectricityMapsProvider()
+		provider, err = NewElectricityMapsProvider(signal)
 		if err != nil {
 			return nil, err
 		}
