@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -34,7 +33,7 @@ func GetElectricityMapSubscriptionModels() []SubscriptionType {
 	return subscriptionTypes
 }
 
-type ElectricityMapLatest struct {
+type ElectricityMapLiveResult struct {
 	Zone               string    `json:"zone"`
 	CarbonIntensity    int       `json:"carbonIntensity"`
 	Datetime           time.Time `json:"datetime"`
@@ -45,7 +44,7 @@ type ElectricityMapLatest struct {
 	EstimationMethod   string    `json:"estimationMethod"`
 }
 
-type ElectricityMapForecast struct {
+type ElectricityMapForecastResult struct {
 	Zone     string `json:"zone"`
 	Forecast []struct {
 		CarbonIntensity int       `json:"carbonIntensity"`
@@ -164,18 +163,57 @@ func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone *string) 
 		return "", err
 	}
 
-	var latest ElectricityMapLatest
-	err = json.Unmarshal(bytes, &latest)
+	var result ElectricityMapLiveResult
+	err = json.Unmarshal(bytes, &result)
 	if err != nil {
 		return "", err
 	}
 
-	carbonIntensity := strconv.Itoa(latest.CarbonIntensity)
-	return carbonIntensity, nil
-
+	carbonIntensity := float64(result.CarbonIntensity)
+	return fmt.Sprintf("%.2f", carbonIntensity), nil
 }
 
 func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone *string) (string, error) {
+	requestUrl := ResolveAbsoluteUriReference(p.baseUrl, p.subscriptionRelativeUrl, &url.URL{Path: "/carbon-intensity/forecast"})
+
+	if zone != nil {
+		params := url.Values{}
+		params.Add("zone", *zone)
+		requestUrl.RawQuery = params.Encode()
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
+	if err != nil {
+		return "", err
+	}
+
+	request.Header.Add("auth-token", p.apiKey)
+
+	response, err := p.client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		apierr, msg, err := p.unwrapHttpResponseErrorPayload(response)
+		if err != nil {
+			return "", errors.New(response.Status)
+		}
+
+		return "", errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
+	}
+
+	bytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result ElectricityMapForecastResult
+	err = json.Unmarshal(bytes, &result)
+	if err != nil {
+		return "", err
+	}
 
 	return "", nil
 }

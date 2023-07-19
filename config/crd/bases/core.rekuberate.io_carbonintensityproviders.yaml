@@ -22,7 +22,7 @@ spec:
     - jsonPath: .status.zone
       name: Zone
       type: string
-    - jsonPath: .spec.interval
+    - jsonPath: .spec.forecastRefreshInterval
       name: Forecast Interval(h)
       type: string
     - jsonPath: .status.lastForecast
@@ -95,11 +95,17 @@ spec:
                 - average
                 - marginal
                 type: string
-              interval:
+              forecastRefreshInterval:
                 default: 12
                 format: int32
                 maximum: 24
                 minimum: 12
+                type: integer
+              liveRefreshInterval:
+                default: 1
+                format: int32
+                maximum: 24
+                minimum: 1
                 type: integer
               provider:
                 default: electricitymaps
@@ -134,7 +140,8 @@ spec:
                 type: object
             required:
             - emissionsType
-            - interval
+            - forecastRefreshInterval
+            - liveRefreshInterval
             - provider
             type: object
           status:

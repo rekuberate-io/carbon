@@ -35,7 +35,15 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:Maximum=24
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +kubebuilder:validation:ExclusiveMaximum=false
-	RefreshIntervalInHours *int32 `json:"interval"`
+	ForecastRefreshIntervalInHours *int32 `json:"forecastRefreshInterval"`
+
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=24
+	// +kubebuilder:validation:ExclusiveMinimum=false
+	// +kubebuilder:validation:ExclusiveMaximum=false
+	LiveRefreshIntervalInHours *int32 `json:"liveRefreshInterval"`
 
 	// +kubebuilder:validation:Enum=watttime;electricitymaps
 	// +kubebuilder:default:=electricitymaps
@@ -87,7 +95,7 @@ type GeolocationSpec struct {
 // CarbonIntensityProvider is the Schema for the carbonintensityproviders API
 // +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
 // +kubebuilder:printcolumn:name="Zone",type=string,JSONPath=`.status.zone`
-// +kubebuilder:printcolumn:name="Forecast Interval(h)",type=string,JSONPath=`.spec.interval`
+// +kubebuilder:printcolumn:name="Forecast Interval(h)",type=string,JSONPath=`.spec.forecastRefreshInterval`
 // +kubebuilder:printcolumn:name="Last Forecast (Next 24h)",type=string,JSONPath=`.status.lastForecast`
 // +kubebuilder:printcolumn:name="Carbon Intensity (gCO2eq/KWh)",type=string,JSONPath=`.status.carbonIntensity`
 // +kubebuilder:printcolumn:name="Last Update",type=string,JSONPath=`.status.lastUpdate`

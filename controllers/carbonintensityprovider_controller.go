@@ -144,16 +144,25 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, nil
 	}
 
-	currentCarbonIntensity, err := provider.GetCurrent(ctx, cip.Spec.ElectricityMapsConfiguration.Zone)
+	currentCarbonIntensity, err := provider.GetCurrent(ctx, cip.Status.Zone)
 	if err != nil {
 		logger.Error(err, "request to provider failed", "providerType", providerType)
 		currentCarbonIntensity = "N/A"
-		//return ctrl.Result{}, nil
 	}
 
-	requeueAfter := time.Hour * time.Duration(*cip.Spec.RefreshIntervalInHours)
+	if cip.Status.LastForecast.Add(time.Duration(*cip.Spec.ForecastRefreshIntervalInHours)*time.Hour).Before(time.Now()) || cip.Status.LastForecast == nil {
+		lastForecast := cip.Status.LastForecast
+		cip.Status.LastForecast = &metav1.Time{Time: time.Now()}
 
-	cip.Status.LastForecast = &metav1.Time{Time: time.Now()}
+		_, err := provider.GetForecast(ctx, cip.Spec.ElectricityMapsConfiguration.Zone)
+		if err != nil {
+			logger.Error(err, "request to provider failed", "providerType", providerType)
+			cip.Status.LastForecast = lastForecast
+		}
+	}
+
+	requeueAfter := time.Hour * time.Duration(*cip.Spec.LiveRefreshIntervalInHours)
+
 	cip.Status.LastUpdate = &metav1.Time{Time: time.Now()}
 	cip.Status.NextUpdate = &metav1.Time{Time: time.Now().Add(requeueAfter)}
 	cip.Status.CarbonIntensity = &currentCarbonIntensity

@@ -9,7 +9,8 @@ metadata:
     app.kubernetes.io/created-by: carbon
   name: carbonintensityprovider-sample
 spec:
-  interval: 12
+  forecastRefreshInterval: 12
+  liveRefreshInterval: 1
   provider: electricitymaps
   emissionsType: marginal
   watttime :
@@ -20,6 +21,6 @@ spec:
   electricitymaps:
     subscription: free_tier
     commercialTrialEndpoint: /2w97h07rvxvuaa1g
-    zone: AU
+    zone: DE
     apiKey:
       name: electricitymaps-apikey
