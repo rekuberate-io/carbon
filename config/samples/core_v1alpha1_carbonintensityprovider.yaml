@@ -18,5 +18,8 @@ spec:
     password:
       name: watttime-password
   electricitymaps:
-    apikey:
+    subscription: free_tier
+    commercialTrialEndpoint: /2w97h07rvxvuaa1g
+    zone: AU
+    apiKey:
       name: electricitymaps-apikey

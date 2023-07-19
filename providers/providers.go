@@ -1,14 +1,19 @@
 package providers
 
+import (
+	"context"
+)
+
 type ProviderType string
 
 const (
-	WattTime        ProviderType = "watttime"
-	ElectricityMaps ProviderType = "electricitymaps"
+	WattTime             ProviderType = "watttime"
+	ElectricityMaps      ProviderType = "electricitymaps"
+	CarbonIntensityOrgUK ProviderType = "carbonintensity_org_uk"
 )
 
 var (
-	supportedProviders     = []ProviderType{WattTime, ElectricityMaps}
+	supportedProviders     = []ProviderType{WattTime, ElectricityMaps, CarbonIntensityOrgUK}
 	supportedEmissionTypes = []EmissionsType{Average, Marginal}
 )
 
@@ -28,6 +33,12 @@ func GetSupportedEmissionsTypes() []EmissionsType {
 }
 
 type Provider interface {
-	GetCurrent(emissionsType EmissionsType) (string, error)
-	GetForecast(emissionsType EmissionsType) (string, error)
+	GetCurrent(ctx context.Context, zone *string) (string, error)
+	GetForecast(ctx context.Context, zone *string) (string, error)
+	GetHistory(ctx context.Context, zone *string) (string, error)
 }
+
+//
+//type AbsoluteUriResolver interface {
+//	resolveReference(baseUrl *url.URL, paths ...*url.URL) *url.URL
+//}

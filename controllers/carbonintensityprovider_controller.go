@@ -71,7 +71,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 
 	var provider providers.Provider
 	providerType := providers.ProviderType(cip.Spec.Provider)
-	emissionsType := providers.EmissionsType(cip.Spec.EmissionsType)
+	patch := client.MergeFrom(cip.DeepCopy())
 
 	switch providerType {
 	case providers.WattTime:
@@ -79,6 +79,8 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			err = errors.New("missing configuration in yaml")
 			break
 		}
+
+		cip.Status.Zone = &cip.Spec.WattTimeConfiguration.Region
 
 		passwordRef := cip.Spec.WattTimeConfiguration.Password
 		objectKey := client.ObjectKey{
@@ -105,7 +107,36 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			break
 		}
 
-		provider, err = providers.NewElectricityMapsProvider()
+		cip.Status.Zone = cip.Spec.ElectricityMapsConfiguration.Zone
+
+		apiKeyRef := cip.Spec.ElectricityMapsConfiguration.ApiKey
+		objectKey := client.ObjectKey{
+			Namespace: req.Namespace,
+			Name:      apiKeyRef.Name,
+		}
+
+		var secret v1core.Secret
+		if err := r.Get(ctx, objectKey, &secret); err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.Error(err, "finding secret failed")
+				return ctrl.Result{}, nil
+			}
+
+			logger.Error(err, "fetching secret failed")
+			return ctrl.Result{}, err
+		}
+
+		apiKey := string(secret.Data["apiKey"])
+		subscriptionType := providers.SubscriptionType(cip.Spec.ElectricityMapsConfiguration.Subscription)
+
+		switch subscriptionType {
+		case providers.Commercial:
+			provider, err = providers.NewElectricityMapsProvider(apiKey)
+		case providers.CommercialTrial:
+			provider, err = providers.NewElectricityMapsCommercialTrialProvider(apiKey, cip.Spec.ElectricityMapsConfiguration.CommercialTrialEndpoint)
+		case providers.FreeTier:
+			provider, err = providers.NewElectricityMapsFreeTierProvider(apiKey)
+		}
 	}
 
 	if err != nil {
@@ -113,17 +144,19 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, nil
 	}
 
-	_, err = provider.GetCurrent(emissionsType)
+	currentCarbonIntensity, err := provider.GetCurrent(ctx, cip.Spec.ElectricityMapsConfiguration.Zone)
 	if err != nil {
 		logger.Error(err, "request to provider failed", "providerType", providerType)
-		return ctrl.Result{}, nil
+		currentCarbonIntensity = "N/A"
+		//return ctrl.Result{}, nil
 	}
 
 	requeueAfter := time.Hour * time.Duration(*cip.Spec.RefreshIntervalInHours)
 
-	patch := client.MergeFrom(cip.DeepCopy())
+	cip.Status.LastForecast = &metav1.Time{Time: time.Now()}
 	cip.Status.LastUpdate = &metav1.Time{Time: time.Now()}
 	cip.Status.NextUpdate = &metav1.Time{Time: time.Now().Add(requeueAfter)}
+	cip.Status.CarbonIntensity = &currentCarbonIntensity
 	err = r.Status().Patch(ctx, &cip, patch)
 	if err != nil {
 		namespacedName := fmt.Sprintf("%v/%v", cip.Namespace, cip.Name)

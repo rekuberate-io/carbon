@@ -19,11 +19,17 @@ spec:
     - jsonPath: .spec.provider
       name: Provider
       type: string
-    - jsonPath: .spec.emissionsType
-      name: Emissions Type
+    - jsonPath: .status.zone
+      name: Zone
       type: string
     - jsonPath: .spec.interval
-      name: Interval(Hours)
+      name: Forecast Interval(h)
+      type: string
+    - jsonPath: .status.lastForecast
+      name: Last Forecast (Next 24h)
+      type: string
+    - jsonPath: .status.carbonIntensity
+      name: Carbon Intensity (gCO2eq/KWh)
       type: string
     - jsonPath: .status.lastUpdate
       name: Last Update
@@ -55,7 +61,7 @@ spec:
             properties:
               electricitymaps:
                 properties:
-                  apikey:
+                  apiKey:
                     description: SecretReference represents a Secret Reference. It
                       has enough information to retrieve secret in any namespace
                     properties:
@@ -69,6 +75,19 @@ spec:
                         type: string
                     type: object
                     x-kubernetes-map-type: atomic
+                  commercialTrialEndpoint:
+                    type: string
+                  subscription:
+                    default: free_tier
+                    enum:
+                    - commercial
+                    - commercial_trial
+                    - free_tier
+                    type: string
+                  zone:
+                    type: string
+                required:
+                - apiKey
                 type: object
               emissionsType:
                 default: average
@@ -122,11 +141,18 @@ spec:
             description: CarbonIntensityProviderStatus defines the observed state
               of CarbonIntensityProvider
             properties:
+              carbonIntensity:
+                type: string
+              lastForecast:
+                format: date-time
+                type: string
               lastUpdate:
                 format: date-time
                 type: string
               nextUpdate:
                 format: date-time
+                type: string
+              zone:
                 type: string
             type: object
         type: object

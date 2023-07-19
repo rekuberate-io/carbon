@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	wattTimeBaseUrl string = "https://api2.watttime.org/"
+	wattTimeBaseUrl           string = "https://api2.watttime.org/"
+	wattTimeApiVersionUrlPath string = "/v2"
 )
 
 type WattTimeProvider struct {
@@ -46,8 +47,10 @@ func NewWattTimeProvider(ctx context.Context, username string, password string) 
 }
 
 func (p *WattTimeProvider) login(ctx context.Context) error {
-	relativeLoginUrl := &url.URL{Path: "/v2/login"}
-	loginUrl := p.baseUrl.ResolveReference(relativeLoginUrl)
+	//relativeLoginUrl := &url.URL{Path: "/v2/login"}
+	//loginUrl := p.baseUrl.ResolveReference(relativeLoginUrl)
+
+	loginUrl := ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/login"})
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, loginUrl.String(), nil)
 	if err != nil {
 		return err
@@ -85,19 +88,15 @@ func (p *WattTimeProvider) login(ctx context.Context) error {
 	return nil
 }
 
-func (p *WattTimeProvider) GetCurrent(emissionsType EmissionsType) (string, error) {
-	if emissionsType == Average {
-		return "", errors.New(fmt.Sprintf("'%s' operating emissions are not supported", emissionsType))
-	}
-
+func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone *string) (string, error) {
 	return "", nil
 }
 
-func (p *WattTimeProvider) GetForecast(emissionsType EmissionsType) (string, error) {
-	if emissionsType == Average {
-		return "", errors.New(fmt.Sprintf("'%s' operating emissions are not supported", emissionsType))
-	}
+func (p *WattTimeProvider) GetForecast(ctx context.Context, zone *string) (string, error) {
+	return "", nil
+}
 
+func (p *WattTimeProvider) GetHistory(ctx context.Context, zone *string) (string, error) {
 	return "", nil
 }
 
