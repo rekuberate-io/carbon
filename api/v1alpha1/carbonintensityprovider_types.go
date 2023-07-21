@@ -35,7 +35,7 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:Maximum=24
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +kubebuilder:validation:ExclusiveMaximum=false
-	ForecastRefreshIntervalInHours *int32 `json:"forecastRefreshInterval"`
+	ForecastRefreshIntervalInHours int32 `json:"forecastRefreshInterval"`
 
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Required

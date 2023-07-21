@@ -205,7 +205,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 
 	timestamp := time.Now()
 
-	updateForecast = createConfigMap || (cip.Status.LastForecast == nil || cip.Status.LastForecast.Add(time.Duration(*cip.Spec.ForecastRefreshIntervalInHours)*time.Minute).Before(time.Now()))
+	updateForecast = createConfigMap || (cip.Status.LastForecast == nil || cip.Status.LastForecast.Add(time.Duration(cip.Spec.ForecastRefreshIntervalInHours)*time.Minute).Before(time.Now()))
 	if updateForecast {
 		lastForecast := cip.Status.LastForecast
 		cip.Status.LastForecast = &metav1.Time{Time: timestamp}
