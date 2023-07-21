@@ -172,9 +172,17 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		Name:      fmt.Sprintf("%s-forecast", req.Name),
 	}
 
-	var createConfigMap bool = cip.Status.Provider == nil || cip.Status.Zone == nil || cip.Spec.Provider != *cip.Status.Provider || zone != cip.Status.Zone
+	var createConfigMap bool = false //cip.Status.Provider == nil || cip.Status.Zone == nil || cip.Spec.Provider != *cip.Status.Provider || zone != cip.Status.Zone
 	var deleteConfigMap bool = true
 	var updateForecast bool = false
+
+	if cip.Status.Provider == nil || cip.Status.Zone == nil {
+		createConfigMap = true
+	} else {
+		if cip.Spec.Provider != *cip.Status.Provider || zone != cip.Status.Zone {
+			createConfigMap = true
+		}
+	}
 
 	configMap := &v1core.ConfigMap{}
 	err = r.Get(ctx, objectKey, configMap)
