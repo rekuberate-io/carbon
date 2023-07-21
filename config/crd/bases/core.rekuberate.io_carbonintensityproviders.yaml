@@ -23,13 +23,13 @@ spec:
       name: Zone
       type: string
     - jsonPath: .spec.forecastRefreshInterval
-      name: Forecast Interval(h)
+      name: Forecast INVL(h)
       type: string
     - jsonPath: .status.lastForecast
-      name: Last Forecast (Next 24h)
+      name: Last Forecast
       type: string
     - jsonPath: .status.carbonIntensity
-      name: Carbon Intensity (gCO2eq/KWh)
+      name: CI (gCO2eq/KWh)
       type: string
     - jsonPath: .status.lastUpdate
       name: Last Update

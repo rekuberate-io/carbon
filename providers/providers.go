@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"time"
 )
 
 type ProviderType string
@@ -33,12 +34,12 @@ func GetSupportedEmissionsTypes() []EmissionsType {
 }
 
 type Provider interface {
-	GetCurrent(ctx context.Context, zone *string) (string, error)
-	GetForecast(ctx context.Context, zone *string) (string, error)
+	GetCurrent(ctx context.Context, zone *string) (float64, error)
+	GetForecast(ctx context.Context, zone *string) ([]Forecast, error)
 	GetHistory(ctx context.Context, zone *string) (string, error)
 }
 
-//
-//type AbsoluteUriResolver interface {
-//	resolveReference(baseUrl *url.URL, paths ...*url.URL) *url.URL
-//}
+type Forecast struct {
+	PointTime       time.Time `json:"pointTime"`
+	CarbonIntensity float64   `json:"carbonIntensity"`
+}

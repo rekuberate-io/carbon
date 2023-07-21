@@ -12,9 +12,8 @@ import (
 )
 
 const (
-	electricityMapsBaseUrl        string = "https://api-access.electricitymaps.com/"
-	electricityMapsFreeTierPath   string = "/free-tier"
-	electricityMapsVersionUrlPath string = "/v3"
+	electricityMapsBaseUrl      string = "https://api-access.electricitymaps.com/"
+	electricityMapsFreeTierPath string = "/free-tier"
 )
 
 type SubscriptionType string
@@ -127,7 +126,7 @@ func NewElectricityMapsFreeTierProvider(apiKey string) (*ElectricityMapsProvider
 	return electricityMaps, nil
 }
 
-func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone *string) (string, error) {
+func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone *string) (float64, error) {
 	requestUrl := ResolveAbsoluteUriReference(p.baseUrl, p.subscriptionRelativeUrl, &url.URL{Path: "/carbon-intensity/latest"})
 
 	if zone != nil {
@@ -138,43 +137,47 @@ func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone *string) 
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
-		return "", err
+		return noValue, err
 	}
 
 	request.Header.Add("auth-token", p.apiKey)
 
 	response, err := p.client.Do(request)
 	if err != nil {
-		return "", err
+		return noValue, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		apierr, msg, err := p.unwrapHttpResponseErrorPayload(response)
 		if err != nil {
-			return "", errors.New(response.Status)
+			return noValue, errors.New(response.Status)
 		}
 
-		return "", errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
+		return noValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
 	}
 
 	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return noValue, err
 	}
 
 	var result ElectricityMapLiveResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return "", err
+		return noValue, err
 	}
 
 	carbonIntensity := float64(result.CarbonIntensity)
-	return fmt.Sprintf("%.2f", carbonIntensity), nil
+	return carbonIntensity, nil
 }
 
-func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone *string) (string, error) {
-	requestUrl := ResolveAbsoluteUriReference(p.baseUrl, p.subscriptionRelativeUrl, &url.URL{Path: "/carbon-intensity/forecast"})
+func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone *string) ([]Forecast, error) {
+	requestUrl := ResolveAbsoluteUriReference(
+		p.baseUrl,
+		p.subscriptionRelativeUrl,
+		&url.URL{Path: "/carbon-intensity/forecast"},
+	)
 
 	if zone != nil {
 		params := url.Values{}
@@ -184,38 +187,48 @@ func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone *string)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	request.Header.Add("auth-token", p.apiKey)
 
 	response, err := p.client.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		apierr, msg, err := p.unwrapHttpResponseErrorPayload(response)
 		if err != nil {
-			return "", errors.New(response.Status)
+			return nil, errors.New(response.Status)
 		}
 
-		return "", errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
+		return nil, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
 	}
 
 	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var result ElectricityMapForecastResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return "", nil
+	forecasts := make([]Forecast, 0)
+	for _, f := range result.Forecast {
+		forecast := Forecast{
+			PointTime:       f.Datetime,
+			CarbonIntensity: float64(f.CarbonIntensity),
+		}
+
+		forecasts = append(forecasts, forecast)
+	}
+
+	return forecasts, nil
 }
 
 func (p *ElectricityMapsProvider) GetHistory(ctx context.Context, zone *string) (string, error) {

@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+const (
+	noValue float64 = -1
+)
+
 func ResolveAbsoluteUriReference(baseUrl *url.URL, paths ...*url.URL) *url.URL {
 	var relativePath string
 	for _, path := range paths {

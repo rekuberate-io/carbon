@@ -11,7 +11,7 @@ metadata:
 spec:
   forecastRefreshInterval: 12
   liveRefreshInterval: 1
-  provider: electricitymaps
+  provider: watttime
   emissionsType: marginal
   watttime :
     username: rekuberate_test
@@ -19,7 +19,7 @@ spec:
     password:
       name: watttime-password
   electricitymaps:
-    subscription: free_tier
+    subscription: commercial_trial
     commercialTrialEndpoint: /2w97h07rvxvuaa1g
     zone: DE
     apiKey:
