@@ -9,9 +9,9 @@ metadata:
     app.kubernetes.io/created-by: carbon
   name: carbonintensityprovider-sample
 spec:
-  forecastRefreshInterval: 12
+  forecastRefreshInterval: 24
   liveRefreshInterval: 1
-  provider: watttime
+  provider: simulator
   emissionsType: marginal
   watttime :
     username: rekuberate_test

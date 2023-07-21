@@ -11,10 +11,11 @@ const (
 	WattTime             ProviderType = "watttime"
 	ElectricityMaps      ProviderType = "electricitymaps"
 	CarbonIntensityOrgUK ProviderType = "carbonintensity_org_uk"
+	Simulator            ProviderType = "simulator"
 )
 
 var (
-	supportedProviders     = []ProviderType{WattTime, ElectricityMaps, CarbonIntensityOrgUK}
+	supportedProviders     = []ProviderType{WattTime, ElectricityMaps, CarbonIntensityOrgUK, Simulator}
 	supportedEmissionTypes = []EmissionsType{Average, Marginal}
 )
 

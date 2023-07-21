@@ -45,7 +45,7 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:ExclusiveMaximum=false
 	LiveRefreshIntervalInHours *int32 `json:"liveRefreshInterval"`
 
-	// +kubebuilder:validation:Enum=watttime;electricitymaps
+	// +kubebuilder:validation:Enum=watttime;electricitymaps;simulator
 	// +kubebuilder:default:=electricitymaps
 	Provider string `json:"provider"`
 
@@ -94,7 +94,7 @@ type GeolocationSpec struct {
 //+kubebuilder:subresource:status
 
 // CarbonIntensityProvider is the Schema for the carbonintensityproviders API
-// +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.status.provider`
+// +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
 // +kubebuilder:printcolumn:name="Zone",type=string,JSONPath=`.status.zone`
 // +kubebuilder:printcolumn:name="Forecast INVL(h)",type=string,JSONPath=`.spec.forecastRefreshInterval`
 // +kubebuilder:printcolumn:name="Last Forecast",type=string,JSONPath=`.status.lastForecast`

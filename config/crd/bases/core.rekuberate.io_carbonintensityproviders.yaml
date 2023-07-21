@@ -16,7 +16,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.provider
+    - jsonPath: .spec.provider
       name: Provider
       type: string
     - jsonPath: .status.zone
@@ -112,6 +112,7 @@ spec:
                 enum:
                 - watttime
                 - electricitymaps
+                - simulator
                 type: string
               watttime:
                 properties:

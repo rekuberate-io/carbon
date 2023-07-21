@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rekuberate-io/carbon/providers"
+	"github.com/rekuberate-io/carbon/providers/simulator"
 	v1core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -147,6 +148,11 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		case providers.FreeTier:
 			provider, err = providers.NewElectricityMapsFreeTierProvider(apiKey)
 		}
+	case providers.Simulator:
+		simulatedZone := simulator.Zone
+		zone = &simulatedZone
+
+		provider, err = simulator.NewCarbonIntensityProviderSimulator()
 	}
 
 	if err != nil {
