@@ -32,7 +32,7 @@ func NewCarbonIntensityProviderSimulator(zone string, randomize bool) (*Simulato
 			return nil, err
 		}
 
-		max, min := getMinMax(result)
+		max, min := getMaxMin(result)
 
 		return &Simulator{
 			zone:      zone,
@@ -45,7 +45,7 @@ func NewCarbonIntensityProviderSimulator(zone string, randomize bool) (*Simulato
 	return &Simulator{zone: zone, randomize: randomize}, nil
 }
 
-func (p *Simulator) GetCurrent(ctx context.Context, zone *string) (float64, error) {
+func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error) {
 	if p.randomize {
 		return rand.Float64() * (p.max - p.min), nil
 	}
@@ -60,7 +60,7 @@ func (p *Simulator) GetCurrent(ctx context.Context, zone *string) (float64, erro
 	return carbonIntensity, nil
 }
 
-func (p *Simulator) GetForecast(ctx context.Context, zone *string) ([]providers.Forecast, error) {
+func (p *Simulator) GetForecast(ctx context.Context, zone string) ([]providers.Forecast, error) {
 	var result providers.ElectricityMapForecastResult
 	err := json.Unmarshal([]byte(forecast), &result)
 	if err != nil {
@@ -84,11 +84,7 @@ func (p *Simulator) GetForecast(ctx context.Context, zone *string) ([]providers.
 	return forecasts, nil
 }
 
-func (p *Simulator) GetHistory(ctx context.Context, zone *string) (string, error) {
-	return "", nil
-}
-
-func getMinMax(results providers.ElectricityMapForecastResult) (int, int) {
+func getMaxMin(results providers.ElectricityMapForecastResult) (int, int) {
 	var max int = results.Forecast[0].CarbonIntensity
 	var min int = results.Forecast[0].CarbonIntensity
 

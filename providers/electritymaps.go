@@ -126,14 +126,11 @@ func NewElectricityMapsFreeTierProvider(apiKey string) (*ElectricityMapsProvider
 	return electricityMaps, nil
 }
 
-func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone *string) (float64, error) {
+func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone string) (float64, error) {
 	requestUrl := ResolveAbsoluteUriReference(p.baseUrl, p.subscriptionRelativeUrl, &url.URL{Path: "/carbon-intensity/latest"})
-
-	if zone != nil {
-		params := url.Values{}
-		params.Add("zone", *zone)
-		requestUrl.RawQuery = params.Encode()
-	}
+	params := url.Values{}
+	params.Add("zone", zone)
+	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
@@ -172,18 +169,15 @@ func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone *string) 
 	return carbonIntensity, nil
 }
 
-func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone *string) ([]Forecast, error) {
+func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone string) ([]Forecast, error) {
 	requestUrl := ResolveAbsoluteUriReference(
 		p.baseUrl,
 		p.subscriptionRelativeUrl,
 		&url.URL{Path: "/carbon-intensity/forecast"},
 	)
-
-	if zone != nil {
-		params := url.Values{}
-		params.Add("zone", *zone)
-		requestUrl.RawQuery = params.Encode()
-	}
+	params := url.Values{}
+	params.Add("zone", zone)
+	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
@@ -229,10 +223,6 @@ func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone *string)
 	}
 
 	return forecasts, nil
-}
-
-func (p *ElectricityMapsProvider) GetHistory(ctx context.Context, zone *string) (string, error) {
-	return "", nil
 }
 
 func (p *ElectricityMapsProvider) unwrapHttpResponseErrorPayload(response *http.Response) (apiError string, message string, err error) {

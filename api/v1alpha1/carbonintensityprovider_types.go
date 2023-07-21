@@ -43,7 +43,7 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:Maximum=24
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +kubebuilder:validation:ExclusiveMaximum=false
-	LiveRefreshIntervalInHours *int32 `json:"liveRefreshInterval"`
+	LiveRefreshIntervalInHours int32 `json:"liveRefreshInterval"`
 
 	// +kubebuilder:validation:Enum=watttime;electricitymaps;simulator
 	// +kubebuilder:default:=electricitymaps
@@ -80,9 +80,9 @@ type WattTimeConfigurationSpec struct {
 type ElectricityMapsConfigurationSpec struct {
 	// +kubebuilder:validation:Enum=commercial;commercial_trial;free_tier
 	// +kubebuilder:default:=free_tier
-	Subscription            string              `json:"subscription,omitempty"`
+	Subscription            string              `json:"subscription"`
 	CommercialTrialEndpoint *string             `json:"commercialTrialEndpoint,omitempty"`
-	Zone                    *string             `json:"zone,omitempty"`
+	Zone                    string              `json:"zone"`
 	ApiKey                  *v1.SecretReference `json:"apiKey"`
 }
 
@@ -92,7 +92,7 @@ type SimulatorConfigurationSpec struct {
 	Randomize *bool `json:"randomize,omitempty"`
 
 	// +kubebuilder:default:=SIM-1
-	Zone *string `json:"zone,omitempty"`
+	Zone string `json:"zone"`
 }
 
 type GeolocationSpec struct {

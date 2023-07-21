@@ -108,14 +108,10 @@ func (p *WattTimeProvider) login(ctx context.Context) error {
 	return nil
 }
 
-func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone *string) (float64, error) {
-	if zone == nil {
-		return NoValue, errors.New(fmt.Sprintf("zone (ba - balancing authority abbreviation) is required"))
-	}
-
+func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone string) (float64, error) {
 	requestUrl := ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/index"})
 	params := url.Values{}
-	params.Add("ba", *zone)
+	params.Add("ba", zone)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
@@ -159,18 +155,14 @@ func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone *string) (float6
 	return carbonIntensity, nil
 }
 
-func (p *WattTimeProvider) GetForecast(ctx context.Context, zone *string) ([]Forecast, error) {
-	if zone == nil {
-		return nil, errors.New(fmt.Sprintf("zone (ba - balancing authority abbreviation) is required"))
-	}
-
+func (p *WattTimeProvider) GetForecast(ctx context.Context, zone string) ([]Forecast, error) {
 	requestUrl := ResolveAbsoluteUriReference(
 		p.baseUrl,
 		&url.URL{Path: wattTimeApiVersionUrlPath},
 		&url.URL{Path: "/forecast"},
 	)
 	params := url.Values{}
-	params.Add("ba", *zone)
+	params.Add("ba", zone)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
@@ -216,10 +208,6 @@ func (p *WattTimeProvider) GetForecast(ctx context.Context, zone *string) ([]For
 	}
 
 	return forecasts, nil
-}
-
-func (p *WattTimeProvider) GetHistory(ctx context.Context, zone *string) (string, error) {
-	return "", nil
 }
 
 func (p *WattTimeProvider) unwrapHttpResponseErrorPayload(response *http.Response) (apiError string, message string, err error) {

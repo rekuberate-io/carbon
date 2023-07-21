@@ -80,7 +80,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	var provider providers.Provider
-	var zone *string
+	var zone string
 	providerType := providers.ProviderType(cip.Spec.Provider)
 	patch := client.MergeFrom(cip.DeepCopy())
 
@@ -91,7 +91,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			break
 		}
 
-		zone = &cip.Spec.WattTimeConfiguration.Region
+		zone = cip.Spec.WattTimeConfiguration.Region
 
 		passwordRef := cip.Spec.WattTimeConfiguration.Password
 		objectKey := client.ObjectKey{
@@ -156,7 +156,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 
 		zone = cip.Spec.SimulatorConfiguration.Zone
 
-		provider, err = simulator.NewCarbonIntensityProviderSimulator(*zone, *cip.Spec.SimulatorConfiguration.Randomize)
+		provider, err = simulator.NewCarbonIntensityProviderSimulator(zone, *cip.Spec.SimulatorConfiguration.Randomize)
 	}
 
 	if err != nil {
@@ -189,7 +189,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	if cip.Status.Provider == nil || cip.Status.Zone == nil {
 		createConfigMap = true
 	} else {
-		if cip.Spec.Provider != *cip.Status.Provider || *zone != *cip.Status.Zone {
+		if cip.Spec.Provider != *cip.Status.Provider || zone != *cip.Status.Zone {
 			createConfigMap = true
 		}
 	}
@@ -205,7 +205,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 
 	timestamp := time.Now()
 
-	updateForecast = createConfigMap || (cip.Status.LastForecast == nil || cip.Status.LastForecast.Add(time.Duration(*cip.Spec.ForecastRefreshIntervalInHours)*time.Hour).Before(time.Now()))
+	updateForecast = createConfigMap || (cip.Status.LastForecast == nil || cip.Status.LastForecast.Add(time.Duration(*cip.Spec.ForecastRefreshIntervalInHours)*time.Minute).Before(time.Now()))
 	if updateForecast {
 		lastForecast := cip.Status.LastForecast
 		cip.Status.LastForecast = &metav1.Time{Time: timestamp}
@@ -224,27 +224,29 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 
-		configMap, err = r.PrepareConfigMap(req, forecast, *zone, cip.Status.LastForecast.Time, providerType, true)
-		if err != nil {
-			logger.Error(err, "preparing configmap failed", "objectKey", objectKey)
-			return ctrl.Result{}, err
-		}
+		if forecast != nil {
+			configMap, err = r.PrepareConfigMap(req, forecast, zone, cip.Status.LastForecast.Time, providerType, true)
+			if err != nil {
+				logger.Error(err, "preparing configmap failed", "objectKey", objectKey)
+				return ctrl.Result{}, err
+			}
 
-		err = r.Create(ctx, configMap)
-		if err != nil {
-			logger.Error(err, "creating configmap failed", "objectKey", objectKey)
-			return ctrl.Result{}, err
-		}
+			err = r.Create(ctx, configMap)
+			if err != nil {
+				logger.Error(err, "creating configmap failed", "objectKey", objectKey)
+				return ctrl.Result{}, err
+			}
 
-		err = controllerutil.SetOwnerReference(&cip, configMap, r.Scheme)
-		if err != nil {
-			return ctrl.Result{}, err
+			err = controllerutil.SetOwnerReference(&cip, configMap, r.Scheme)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
-	requeueAfter := time.Hour * time.Duration(*cip.Spec.LiveRefreshIntervalInHours)
+	requeueAfter := time.Minute * time.Duration(cip.Spec.LiveRefreshIntervalInHours)
 
-	cip.Status.Zone = zone
+	cip.Status.Zone = &zone
 	cip.Status.Provider = &cip.Spec.Provider
 	cip.Status.LastUpdate = &metav1.Time{Time: timestamp}
 	cip.Status.NextUpdate = &metav1.Time{Time: timestamp.Add(requeueAfter)}

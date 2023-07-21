@@ -88,6 +88,8 @@ spec:
                     type: string
                 required:
                 - apiKey
+                - subscription
+                - zone
                 type: object
               emissionsType:
                 default: average
@@ -122,6 +124,8 @@ spec:
                   zone:
                     default: SIM-1
                     type: string
+                required:
+                - zone
                 type: object
               watttime:
                 properties:

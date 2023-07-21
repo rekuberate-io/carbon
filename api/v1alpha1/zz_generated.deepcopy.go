@@ -93,11 +93,6 @@ func (in *CarbonIntensityProviderSpec) DeepCopyInto(out *CarbonIntensityProvider
 		*out = new(int32)
 		**out = **in
 	}
-	if in.LiveRefreshIntervalInHours != nil {
-		in, out := &in.LiveRefreshIntervalInHours, &out.LiveRefreshIntervalInHours
-		*out = new(int32)
-		**out = **in
-	}
 	if in.WattTimeConfiguration != nil {
 		in, out := &in.WattTimeConfiguration, &out.WattTimeConfiguration
 		*out = new(WattTimeConfigurationSpec)
@@ -175,11 +170,6 @@ func (in *ElectricityMapsConfigurationSpec) DeepCopyInto(out *ElectricityMapsCon
 		*out = new(string)
 		**out = **in
 	}
-	if in.Zone != nil {
-		in, out := &in.Zone, &out.Zone
-		*out = new(string)
-		**out = **in
-	}
 	if in.ApiKey != nil {
 		in, out := &in.ApiKey, &out.ApiKey
 		*out = new(v1.SecretReference)
@@ -218,11 +208,6 @@ func (in *SimulatorConfigurationSpec) DeepCopyInto(out *SimulatorConfigurationSp
 	if in.Randomize != nil {
 		in, out := &in.Randomize, &out.Randomize
 		*out = new(bool)
-		**out = **in
-	}
-	if in.Zone != nil {
-		in, out := &in.Zone, &out.Zone
-		*out = new(string)
 		**out = **in
 	}
 }

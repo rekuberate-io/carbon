@@ -3,13 +3,13 @@ kind: CarbonIntensityProvider
 metadata:
   labels:
     app.kubernetes.io/name: carbonintensityprovider
-    app.kubernetes.io/instance: carbonintensityprovider-sample
+    app.kubernetes.io/instance: carbonintensityprovider-2
     app.kubernetes.io/part-of: carbon
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: carbon
-  name: carbonintensityprovider-sample
+  name: carbonintensityprovider-2
 spec:
-  forecastRefreshInterval: 24
+  forecastRefreshInterval: 12
   liveRefreshInterval: 1
   provider: simulator
   emissionsType: marginal
@@ -26,4 +26,4 @@ spec:
       name: electricitymaps-apikey
   simulator:
     randomize: true
-    zone: SIM-1
+    zone: SIM-2

@@ -35,9 +35,8 @@ func GetSupportedEmissionsTypes() []EmissionsType {
 }
 
 type Provider interface {
-	GetCurrent(ctx context.Context, zone *string) (float64, error)
-	GetForecast(ctx context.Context, zone *string) ([]Forecast, error)
-	GetHistory(ctx context.Context, zone *string) (string, error)
+	GetCurrent(ctx context.Context, zone string) (float64, error)
+	GetForecast(ctx context.Context, zone string) ([]Forecast, error)
 }
 
 type Forecast struct {
