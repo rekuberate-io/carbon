@@ -97,13 +97,13 @@ spec:
                 - average
                 - marginal
                 type: string
-              forecastRefreshInterval:
+              forecastRefreshIntervalHours:
                 default: 12
                 format: int32
                 maximum: 24
                 minimum: 12
                 type: integer
-              liveRefreshInterval:
+              liveRefreshIntervalHours:
                 default: 1
                 format: int32
                 maximum: 24
@@ -154,8 +154,8 @@ spec:
                 type: object
             required:
             - emissionsType
-            - forecastRefreshInterval
-            - liveRefreshInterval
+            - forecastRefreshIntervalHours
+            - liveRefreshIntervalHours
             - provider
             type: object
           status:

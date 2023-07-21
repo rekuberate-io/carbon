@@ -35,7 +35,7 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:Maximum=24
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +kubebuilder:validation:ExclusiveMaximum=false
-	ForecastRefreshIntervalInHours int32 `json:"forecastRefreshInterval"`
+	ForecastRefreshIntervalInHours int32 `json:"forecastRefreshIntervalHours"`
 
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Required
@@ -43,7 +43,7 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:Maximum=24
 	// +kubebuilder:validation:ExclusiveMinimum=false
 	// +kubebuilder:validation:ExclusiveMaximum=false
-	LiveRefreshIntervalInHours int32 `json:"liveRefreshInterval"`
+	LiveRefreshIntervalInHours int32 `json:"liveRefreshIntervalHours"`
 
 	// +kubebuilder:validation:Enum=watttime;electricitymaps;simulator
 	// +kubebuilder:default:=electricitymaps

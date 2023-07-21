@@ -9,8 +9,8 @@ metadata:
     app.kubernetes.io/created-by: carbon
   name: carbonintensityprovider-sample
 spec:
-  forecastRefreshInterval: 24
-  liveRefreshInterval: 1
+  forecastRefreshIntervalHours: 24
+  liveRefreshIntervalHours: 1
   provider: simulator
   emissionsType: marginal
   watttime :
