@@ -185,7 +185,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	if cip.Status.Provider == nil || cip.Status.Zone == nil {
 		createConfigMap = true
 	} else {
-		if cip.Spec.Provider != *cip.Status.Provider || zone != cip.Status.Zone {
+		if cip.Spec.Provider != *cip.Status.Provider || *zone != *cip.Status.Zone {
 			createConfigMap = true
 		}
 	}
