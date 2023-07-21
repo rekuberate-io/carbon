@@ -24,3 +24,6 @@ spec:
     zone: DE
     apiKey:
       name: electricitymaps-apikey
+  simulator:
+    randomize: true
+    zone: SIM-2

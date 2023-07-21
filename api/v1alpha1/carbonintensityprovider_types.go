@@ -55,6 +55,7 @@ type CarbonIntensityProviderSpec struct {
 
 	WattTimeConfiguration        *WattTimeConfigurationSpec        `json:"watttime,omitempty"`
 	ElectricityMapsConfiguration *ElectricityMapsConfigurationSpec `json:"electricitymaps,omitempty"`
+	SimulatorConfiguration       *SimulatorConfigurationSpec       `json:"simulator,omitempty"`
 }
 
 // CarbonIntensityProviderStatus defines the observed state of CarbonIntensityProvider
@@ -83,6 +84,15 @@ type ElectricityMapsConfigurationSpec struct {
 	CommercialTrialEndpoint *string             `json:"commercialTrialEndpoint,omitempty"`
 	Zone                    *string             `json:"zone,omitempty"`
 	ApiKey                  *v1.SecretReference `json:"apiKey"`
+}
+
+type SimulatorConfigurationSpec struct {
+
+	// +kubebuilder:default:=false
+	Randomize *bool `json:"randomize,omitempty"`
+
+	// +kubebuilder:default:=SIM-1
+	Zone *string `json:"zone,omitempty"`
 }
 
 type GeolocationSpec struct {

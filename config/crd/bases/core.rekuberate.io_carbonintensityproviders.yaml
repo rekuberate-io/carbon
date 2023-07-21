@@ -114,6 +114,15 @@ spec:
                 - electricitymaps
                 - simulator
                 type: string
+              simulator:
+                properties:
+                  randomize:
+                    default: false
+                    type: boolean
+                  zone:
+                    default: SIM-1
+                    type: string
+                type: object
               watttime:
                 properties:
                   password:

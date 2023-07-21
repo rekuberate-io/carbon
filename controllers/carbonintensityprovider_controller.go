@@ -149,10 +149,14 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			provider, err = providers.NewElectricityMapsFreeTierProvider(apiKey)
 		}
 	case providers.Simulator:
-		simulatedZone := simulator.Zone
-		zone = &simulatedZone
+		if cip.Spec.SimulatorConfiguration == nil {
+			err = errors.New("missing configuration in yaml")
+			break
+		}
 
-		provider, err = simulator.NewCarbonIntensityProviderSimulator()
+		zone = cip.Spec.SimulatorConfiguration.Zone
+
+		provider, err = simulator.NewCarbonIntensityProviderSimulator(*zone, *cip.Spec.SimulatorConfiguration.Randomize)
 	}
 
 	if err != nil {
@@ -195,6 +199,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			deleteConfigMap = false
+			createConfigMap = true
 		}
 	}
 
