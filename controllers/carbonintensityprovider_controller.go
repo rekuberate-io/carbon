@@ -17,14 +17,17 @@ limitations under the License.
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rekuberate-io/carbon/providers"
 	v1core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"net"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
@@ -37,6 +40,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	corev1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
+)
+
+const (
+	labelProviderInstance = "core.rekuberate.io/carbon-provider-instance"
+	labelProviderType     = "core.rekuberate.io/carbon-provider-type"
+	labelProviderZone     = "core.rekuberate.io/carbon-provider-zone"
 )
 
 // CarbonIntensityProviderReconciler reconciles a CarbonIntensityProvider object
@@ -70,6 +79,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	var provider providers.Provider
+	var zone *string
 	providerType := providers.ProviderType(cip.Spec.Provider)
 	patch := client.MergeFrom(cip.DeepCopy())
 
@@ -80,7 +90,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			break
 		}
 
-		cip.Status.Zone = &cip.Spec.WattTimeConfiguration.Region
+		zone = &cip.Spec.WattTimeConfiguration.Region
 
 		passwordRef := cip.Spec.WattTimeConfiguration.Password
 		objectKey := client.ObjectKey{
@@ -107,7 +117,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			break
 		}
 
-		cip.Status.Zone = cip.Spec.ElectricityMapsConfiguration.Zone
+		zone = cip.Spec.ElectricityMapsConfiguration.Zone
 
 		apiKeyRef := cip.Spec.ElectricityMapsConfiguration.ApiKey
 		objectKey := client.ObjectKey{
@@ -144,7 +154,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, nil
 	}
 
-	carbonIntensity, err := provider.GetCurrent(ctx, cip.Status.Zone)
+	carbonIntensity, err := provider.GetCurrent(ctx, zone)
 	if err != nil {
 		logger.Error(err, "request to provider failed", "providerType", providerType)
 		carbonIntensity = -1
@@ -157,23 +167,68 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		carbonIntensityAsString = fmt.Sprintf("%.2f", carbonIntensity)
 	}
 
-	if cip.Status.LastForecast == nil || cip.Status.LastForecast.Add(time.Duration(*cip.Spec.ForecastRefreshIntervalInHours)*time.Hour).Before(time.Now()) {
-		lastForecast := cip.Status.LastForecast
-		cip.Status.LastForecast = &metav1.Time{Time: time.Now()}
+	objectKey := client.ObjectKey{
+		Namespace: req.Namespace,
+		Name:      fmt.Sprintf("%s-forecast", req.Name),
+	}
 
-		forecast, err := provider.GetForecast(ctx, cip.Status.Zone)
+	var createConfigMap bool = cip.Status.Provider == nil || cip.Status.Zone == nil || cip.Spec.Provider != *cip.Status.Provider || zone != cip.Status.Zone
+	var deleteConfigMap bool = true
+	var updateForecast bool = false
+
+	configMap := &v1core.ConfigMap{}
+	err = r.Get(ctx, objectKey, configMap)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			deleteConfigMap = false
+		}
+	}
+
+	timestamp := time.Now()
+
+	updateForecast = createConfigMap || (cip.Status.LastForecast == nil || cip.Status.LastForecast.Add(time.Duration(*cip.Spec.ForecastRefreshIntervalInHours)*time.Hour).Before(time.Now()))
+	if updateForecast {
+		lastForecast := cip.Status.LastForecast
+		cip.Status.LastForecast = &metav1.Time{Time: timestamp}
+
+		forecast, err := provider.GetForecast(ctx, zone)
 		if err != nil {
 			logger.Error(err, "request to provider failed", "providerType", providerType)
 			cip.Status.LastForecast = lastForecast
 		}
 
-		logger.Info("f", "forecast", forecast, "providerType", providerType)
+		if deleteConfigMap {
+			err := r.Delete(ctx, configMap)
+			if err != nil {
+				logger.Error(err, "deleting configmap failed", "objectKey", objectKey)
+				return ctrl.Result{}, err
+			}
+		}
+
+		configMap, err = r.PrepareConfigMap(req, forecast, *zone, cip.Status.LastForecast.Time, providerType, true)
+		if err != nil {
+			logger.Error(err, "preparing configmap failed", "objectKey", objectKey)
+			return ctrl.Result{}, err
+		}
+
+		err = r.Create(ctx, configMap)
+		if err != nil {
+			logger.Error(err, "creating configmap failed", "objectKey", objectKey)
+			return ctrl.Result{}, err
+		}
+
+		err = controllerutil.SetOwnerReference(&cip, configMap, r.Scheme)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	requeueAfter := time.Hour * time.Duration(*cip.Spec.LiveRefreshIntervalInHours)
 
-	cip.Status.LastUpdate = &metav1.Time{Time: time.Now()}
-	cip.Status.NextUpdate = &metav1.Time{Time: time.Now().Add(requeueAfter)}
+	cip.Status.Zone = zone
+	cip.Status.Provider = &cip.Spec.Provider
+	cip.Status.LastUpdate = &metav1.Time{Time: timestamp}
+	cip.Status.NextUpdate = &metav1.Time{Time: timestamp.Add(requeueAfter)}
 	cip.Status.CarbonIntensity = &carbonIntensityAsString
 	err = r.Status().Patch(ctx, &cip, patch)
 	if err != nil {
@@ -189,6 +244,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 func (r *CarbonIntensityProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.CarbonIntensityProvider{}).
+		Owns(&v1core.ConfigMap{}).
 		WithEventFilter(ignorePredicates()).
 		Complete(r)
 }
@@ -206,9 +262,58 @@ func ignorePredicates() predicate.Predicate {
 	}
 }
 
-func (r *CarbonIntensityProviderReconciler) getIpAddress() (net.IP, error) {
-	localAddress := "127.0.0.1"
-	ipAddress := net.ParseIP(localAddress)
+func (r *CarbonIntensityProviderReconciler) PrepareConfigMap(
+	req ctrl.Request,
+	forecast []providers.Forecast,
+	zone string,
+	pointTime time.Time,
+	providerType providers.ProviderType,
+	immutable bool,
+) (*v1core.ConfigMap, error) {
 
-	return ipAddress, nil
+	jsonData, err := json.Marshal(forecast)
+	if err != nil {
+		return nil, err
+	}
+
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	if err := encoder.Encode(jsonData); err != nil {
+		return nil, err
+	}
+
+	data := map[string]string{
+		"provider":  string(providerType),
+		"zone":      zone,
+		"pointTime": pointTime.String(),
+	}
+
+	configMapName := fmt.Sprintf("%s-forecast", req.Name)
+
+	labels := map[string]string{
+		"app.kubernetes.io/name":       "carbonintensityprovider",
+		"app.kubernetes.io/instance":   configMapName,
+		"app.kubernetes.io/component":  "forecast",
+		"app.kubernetes.io/part-of":    "carbon",
+		"app.kubernetes.io/managed-by": "controller",
+		"app.kubernetes.io/created-by": "carbon",
+		labelProviderInstance:          req.Name,
+		labelProviderType:              string(providerType),
+		labelProviderZone:              zone,
+	}
+
+	configMap := &v1core.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: req.Namespace,
+			Labels:    labels,
+		},
+		Immutable: &immutable,
+		Data:      data,
+		BinaryData: map[string][]byte{
+			"BinaryData": buffer.Bytes(),
+		},
+	}
+
+	return configMap, nil
 }

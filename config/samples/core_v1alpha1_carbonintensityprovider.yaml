@@ -11,7 +11,7 @@ metadata:
 spec:
   forecastRefreshInterval: 12
   liveRefreshInterval: 1
-  provider: watttime
+  provider: electricitymaps
   emissionsType: marginal
   watttime :
     username: rekuberate_test

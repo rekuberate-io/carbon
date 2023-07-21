@@ -63,6 +63,7 @@ type CarbonIntensityProviderStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	Zone            *string      `json:"zone,omitempty"`
+	Provider        *string      `json:"provider,omitempty"`
 	LastForecast    *metav1.Time `json:"lastForecast,omitempty"`
 	LastUpdate      *metav1.Time `json:"lastUpdate,omitempty"`
 	NextUpdate      *metav1.Time `json:"nextUpdate,omitempty"`
@@ -93,11 +94,11 @@ type GeolocationSpec struct {
 //+kubebuilder:subresource:status
 
 // CarbonIntensityProvider is the Schema for the carbonintensityproviders API
-// +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
+// +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.status.provider`
 // +kubebuilder:printcolumn:name="Zone",type=string,JSONPath=`.status.zone`
-// +kubebuilder:printcolumn:name="Forecast Interval(h)",type=string,JSONPath=`.spec.forecastRefreshInterval`
-// +kubebuilder:printcolumn:name="Last Forecast (Next 24h)",type=string,JSONPath=`.status.lastForecast`
-// +kubebuilder:printcolumn:name="Carbon Intensity (gCO2eq/KWh)",type=string,JSONPath=`.status.carbonIntensity`
+// +kubebuilder:printcolumn:name="Forecast INVL(h)",type=string,JSONPath=`.spec.forecastRefreshInterval`
+// +kubebuilder:printcolumn:name="Last Forecast",type=string,JSONPath=`.status.lastForecast`
+// +kubebuilder:printcolumn:name="CI (gCO2eq/KWh)",type=string,JSONPath=`.status.carbonIntensity`
 // +kubebuilder:printcolumn:name="Last Update",type=string,JSONPath=`.status.lastUpdate`
 // +kubebuilder:printcolumn:name="Next Update",type=string,JSONPath=`.status.nextUpdate`
 type CarbonIntensityProvider struct {

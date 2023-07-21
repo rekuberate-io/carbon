@@ -128,6 +128,11 @@ func (in *CarbonIntensityProviderStatus) DeepCopyInto(out *CarbonIntensityProvid
 		*out = new(string)
 		**out = **in
 	}
+	if in.Provider != nil {
+		in, out := &in.Provider, &out.Provider
+		*out = new(string)
+		**out = **in
+	}
 	if in.LastForecast != nil {
 		in, out := &in.LastForecast, &out.LastForecast
 		*out = (*in).DeepCopy()

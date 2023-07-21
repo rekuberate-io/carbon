@@ -137,35 +137,35 @@ func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone *string) 
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 
 	request.Header.Add("auth-token", p.apiKey)
 
 	response, err := p.client.Do(request)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		apierr, msg, err := p.unwrapHttpResponseErrorPayload(response)
 		if err != nil {
-			return noValue, errors.New(response.Status)
+			return NoValue, errors.New(response.Status)
 		}
 
-		return noValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
+		return NoValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
 	}
 
 	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 
 	var result ElectricityMapLiveResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 
 	carbonIntensity := float64(result.CarbonIntensity)

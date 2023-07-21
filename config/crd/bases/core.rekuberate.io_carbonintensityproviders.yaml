@@ -16,7 +16,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.provider
+    - jsonPath: .status.provider
       name: Provider
       type: string
     - jsonPath: .status.zone
@@ -158,6 +158,8 @@ spec:
                 type: string
               nextUpdate:
                 format: date-time
+                type: string
+              provider:
                 type: string
               zone:
                 type: string

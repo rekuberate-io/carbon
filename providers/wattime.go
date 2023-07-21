@@ -110,7 +110,7 @@ func (p *WattTimeProvider) login(ctx context.Context) error {
 
 func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone *string) (float64, error) {
 	if zone == nil {
-		return noValue, errors.New(fmt.Sprintf("zone (ba - balancing authority abbreviation) is required"))
+		return NoValue, errors.New(fmt.Sprintf("zone (ba - balancing authority abbreviation) is required"))
 	}
 
 	requestUrl := ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/index"})
@@ -120,39 +120,39 @@ func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone *string) (float6
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 
 	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", p.token))
 	response, err := p.client.Do(request)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		apierr, msg, err := p.unwrapHttpResponseErrorPayload(response)
 		if err != nil {
-			return noValue, errors.New(response.Status)
+			return NoValue, errors.New(response.Status)
 		}
 
-		return noValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
+		return NoValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
 	}
 
 	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 
 	var result WattTimeLiveResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return noValue, err
+		return NoValue, err
 	}
 
 	moer, err := strconv.ParseFloat(result.MOER, 64)
 	if err != nil {
-		return noValue, nil
+		return NoValue, nil
 	}
 
 	carbonIntensity := moer * lbsTogramms / 1000

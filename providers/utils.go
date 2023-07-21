@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	noValue float64 = -1
+	NoValue float64 = -1
 )
 
 func ResolveAbsoluteUriReference(baseUrl *url.URL, paths ...*url.URL) *url.URL {
