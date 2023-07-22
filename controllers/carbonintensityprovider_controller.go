@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rekuberate-io/carbon/controllers/metrics"
 	"github.com/rekuberate-io/carbon/providers"
 	"github.com/rekuberate-io/carbon/providers/simulator"
 	v1core "k8s.io/api/core/v1"
@@ -76,6 +77,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		logger.V(5).Error(err, "unable to fetch carbon intensity provider")
+		metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 		return ctrl.Result{}, err
 	}
 
@@ -103,6 +105,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		if err := r.Get(ctx, objectKey, &secret); err != nil {
 			if apierrors.IsNotFound(err) {
 				logger.Error(err, "finding secret failed")
+				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 				return ctrl.Result{}, nil
 			}
 
@@ -130,10 +133,12 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		if err := r.Get(ctx, objectKey, &secret); err != nil {
 			if apierrors.IsNotFound(err) {
 				logger.Error(err, "finding secret failed")
+				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 				return ctrl.Result{}, nil
 			}
 
 			logger.Error(err, "fetching secret failed")
+			metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 			return ctrl.Result{}, err
 		}
 
@@ -144,7 +149,10 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		case providers.Commercial:
 			provider, err = providers.NewElectricityMapsProvider(apiKey)
 		case providers.CommercialTrial:
-			provider, err = providers.NewElectricityMapsCommercialTrialProvider(apiKey, cip.Spec.ElectricityMapsConfiguration.CommercialTrialEndpoint)
+			provider, err = providers.NewElectricityMapsCommercialTrialProvider(
+				apiKey,
+				cip.Spec.ElectricityMapsConfiguration.CommercialTrialEndpoint,
+			)
 		case providers.FreeTier:
 			provider, err = providers.NewElectricityMapsFreeTierProvider(apiKey)
 		}
@@ -155,12 +163,15 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		zone = cip.Spec.SimulatorConfiguration.Zone
-
-		provider, err = simulator.NewCarbonIntensityProviderSimulator(zone, *cip.Spec.SimulatorConfiguration.Randomize)
+		provider, err = simulator.NewCarbonIntensityProviderSimulator(
+			zone,
+			*cip.Spec.SimulatorConfiguration.Randomize,
+		)
 	}
 
 	if err != nil {
 		logger.Error(err, "unable to initialize provider", "providerType", providerType)
+		metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 		return ctrl.Result{}, nil
 	}
 
@@ -172,6 +183,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 
 	var carbonIntensityAsString string
 	if carbonIntensity < 0 {
+		carbonIntensity = 0
 		carbonIntensityAsString = "n/a"
 	} else {
 		carbonIntensityAsString = fmt.Sprintf("%.2f", carbonIntensity)
@@ -220,6 +232,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			err := r.Delete(ctx, configMap)
 			if err != nil {
 				logger.Error(err, "deleting configmap failed", "objectKey", objectKey)
+				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 				return ctrl.Result{}, err
 			}
 		}
@@ -228,17 +241,21 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			configMap, err = r.PrepareConfigMap(req, forecast, zone, cip.Status.LastForecast.Time, providerType, true)
 			if err != nil {
 				logger.Error(err, "preparing configmap failed", "objectKey", objectKey)
+				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 				return ctrl.Result{}, err
 			}
 
 			err = r.Create(ctx, configMap)
 			if err != nil {
 				logger.Error(err, "creating configmap failed", "objectKey", objectKey)
+				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 				return ctrl.Result{}, err
 			}
 
 			err = controllerutil.SetOwnerReference(&cip, configMap, r.Scheme)
 			if err != nil {
+				logger.Error(err, "setting owner reference", "configmap", configMap.Name)
+				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 				return ctrl.Result{}, err
 			}
 		}
@@ -255,8 +272,12 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	if err != nil {
 		namespacedName := fmt.Sprintf("%v/%v", cip.Namespace, cip.Name)
 		logger.Error(err, "failed to patch provider's status", "provider", namespacedName)
+		metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 		return ctrl.Result{}, err
 	}
+
+	metrics.CipLiveCarbonIntensityMetric.WithLabelValues(string(providerType), zone).Set(carbonIntensity)
+	metrics.CipReconciliationLoopsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
 
 	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
@@ -265,7 +286,6 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 func (r *CarbonIntensityProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.CarbonIntensityProvider{}).
-		Owns(&v1core.ConfigMap{}).
 		WithEventFilter(ignorePredicates()).
 		Complete(r)
 }
