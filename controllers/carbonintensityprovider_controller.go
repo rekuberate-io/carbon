@@ -26,7 +26,7 @@ import (
 	"github.com/rekuberate-io/carbon/controllers/metrics"
 	"github.com/rekuberate-io/carbon/providers"
 	"github.com/rekuberate-io/carbon/providers/simulator"
-	v1core "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -41,7 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	corev1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
+	carbonv1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
 )
 
 const (
@@ -70,7 +70,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	logger := log.FromContext(ctx).WithName("controller")
 	var err error
 
-	var cip corev1alpha1.CarbonIntensityProvider
+	var cip carbonv1alpha1.CarbonIntensityProvider
 	if err = r.Get(ctx, req.NamespacedName, &cip); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -101,7 +101,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			Name:      passwordRef.Name,
 		}
 
-		var secret v1core.Secret
+		var secret corev1.Secret
 		if err := r.Get(ctx, objectKey, &secret); err != nil {
 			if apierrors.IsNotFound(err) {
 				logger.Error(err, "finding secret failed")
@@ -129,7 +129,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 			Name:      apiKeyRef.Name,
 		}
 
-		var secret v1core.Secret
+		var secret corev1.Secret
 		if err := r.Get(ctx, objectKey, &secret); err != nil {
 			if apierrors.IsNotFound(err) {
 				logger.Error(err, "finding secret failed")
@@ -206,7 +206,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		}
 	}
 
-	configMap := &v1core.ConfigMap{}
+	configMap := &corev1.ConfigMap{}
 	err = r.Get(ctx, objectKey, configMap)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -285,7 +285,7 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 // SetupWithManager sets up the controller with the Manager.
 func (r *CarbonIntensityProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1alpha1.CarbonIntensityProvider{}).
+		For(&carbonv1alpha1.CarbonIntensityProvider{}).
 		WithEventFilter(ignorePredicates()).
 		Complete(r)
 }
@@ -310,7 +310,7 @@ func (r *CarbonIntensityProviderReconciler) PrepareConfigMap(
 	pointTime time.Time,
 	providerType providers.ProviderType,
 	immutable bool,
-) (*v1core.ConfigMap, error) {
+) (*corev1.ConfigMap, error) {
 
 	jsonData, err := json.Marshal(forecast)
 	if err != nil {
@@ -343,7 +343,7 @@ func (r *CarbonIntensityProviderReconciler) PrepareConfigMap(
 		labelProviderZone:              zone,
 	}
 
-	configMap := &v1core.ConfigMap{
+	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configMapName,
 			Namespace: req.Namespace,
