@@ -63,12 +63,13 @@ type CarbonIntensityProviderStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Zone            *string      `json:"zone,omitempty"`
-	Provider        *string      `json:"provider,omitempty"`
-	LastForecast    *metav1.Time `json:"lastForecast,omitempty"`
-	LastUpdate      *metav1.Time `json:"lastUpdate,omitempty"`
-	NextUpdate      *metav1.Time `json:"nextUpdate,omitempty"`
-	CarbonIntensity *string      `json:"carbonIntensity,omitempty"`
+	Zone            *string            `json:"zone,omitempty"`
+	Provider        *string            `json:"provider,omitempty"`
+	LastForecast    *metav1.Time       `json:"lastForecast,omitempty"`
+	LastUpdate      *metav1.Time       `json:"lastUpdate,omitempty"`
+	NextUpdate      *metav1.Time       `json:"nextUpdate,omitempty"`
+	CarbonIntensity *string            `json:"carbonIntensity,omitempty"`
+	Conditions      []metav1.Condition `json:"conditions"`
 }
 
 type WattTimeConfigurationSpec struct {
