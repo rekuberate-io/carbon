@@ -22,7 +22,7 @@ spec:
     - jsonPath: .status.zone
       name: Zone
       type: string
-    - jsonPath: .spec.forecastRefreshInterval
+    - jsonPath: .spec.forecastRefreshIntervalHours
       name: Forecast INVL(h)
       type: string
     - jsonPath: .status.lastForecast
