@@ -1,0 +1,16 @@
+apiVersion: core.rekuberate.io/v1alpha1
+kind: ElectricityMaps
+metadata:
+  labels:
+    app.kubernetes.io/name: electricitymaps
+    app.kubernetes.io/instance: electricitymaps-sample
+    app.kubernetes.io/part-of: carbon
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: carbon
+  name: electricitymaps-sample
+spec:
+  subscription: commercial_trial
+  commercialTrialEndpoint: /2w97h07rvxvuaa1g
+  zone: DE
+  apiKey:
+    name: electricitymaps-apikey

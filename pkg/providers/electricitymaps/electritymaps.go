@@ -1,10 +1,11 @@
-package providers
+package electricitymaps
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rekuberate-io/carbon/pkg/providers"
 	"io"
 	"net/http"
 	"net/url"
@@ -127,50 +128,50 @@ func NewElectricityMapsFreeTierProvider(apiKey string) (*ElectricityMapsProvider
 }
 
 func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone string) (float64, error) {
-	requestUrl := ResolveAbsoluteUriReference(p.baseUrl, p.subscriptionRelativeUrl, &url.URL{Path: "/carbon-intensity/latest"})
+	requestUrl := providers.ResolveAbsoluteUriReference(p.baseUrl, p.subscriptionRelativeUrl, &url.URL{Path: "/carbon-intensity/latest"})
 	params := url.Values{}
 	params.Add("zone", zone)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
-		return NoValue, err
+		return providers.NoValue, err
 	}
 
 	request.Header.Add("auth-token", p.apiKey)
 
 	response, err := p.client.Do(request)
 	if err != nil {
-		return NoValue, err
+		return providers.NoValue, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		apierr, msg, err := p.unwrapHttpResponseErrorPayload(response)
 		if err != nil {
-			return NoValue, errors.New(response.Status)
+			return providers.NoValue, errors.New(response.Status)
 		}
 
-		return NoValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
+		return providers.NoValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
 	}
 
 	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return NoValue, err
+		return providers.NoValue, err
 	}
 
 	var result ElectricityMapLiveResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return NoValue, err
+		return providers.NoValue, err
 	}
 
 	carbonIntensity := float64(result.CarbonIntensity)
 	return carbonIntensity, nil
 }
 
-func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone string) ([]Forecast, error) {
-	requestUrl := ResolveAbsoluteUriReference(
+func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone string) ([]providers.Forecast, error) {
+	requestUrl := providers.ResolveAbsoluteUriReference(
 		p.baseUrl,
 		p.subscriptionRelativeUrl,
 		&url.URL{Path: "/carbon-intensity/forecast"},
@@ -212,9 +213,9 @@ func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone string) 
 		return nil, err
 	}
 
-	forecasts := make([]Forecast, 0)
+	forecasts := make([]providers.Forecast, 0)
 	for _, f := range result.Forecast {
-		forecast := Forecast{
+		forecast := providers.Forecast{
 			PointTime:       f.Datetime,
 			CarbonIntensity: float64(f.CarbonIntensity),
 		}

@@ -45,17 +45,15 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:ExclusiveMaximum=false
 	LiveRefreshIntervalInHours int32 `json:"liveRefreshIntervalHours"`
 
-	// +kubebuilder:validation:Enum=watttime;electricitymaps;simulator
-	// +kubebuilder:default:=electricitymaps
-	Provider string `json:"provider"`
+	//// +kubebuilder:validation:Enum=watttime;electricitymaps;simulator
+	//// +kubebuilder:default:=electricitymaps
+	//Provider string `json:"provider"`
 
 	// +kubebuilder:validation:Enum=average;marginal
 	// +kubebuilder:default:=average
 	EmissionsType string `json:"emissionsType"`
 
-	WattTimeConfiguration        *WattTimeConfigurationSpec        `json:"watttime,omitempty"`
-	ElectricityMapsConfiguration *ElectricityMapsConfigurationSpec `json:"electricitymaps,omitempty"`
-	SimulatorConfiguration       *SimulatorConfigurationSpec       `json:"simulator,omitempty"`
+	ProviderRef *v1.ObjectReference `json:"providerRef,omitempty"`
 }
 
 // CarbonIntensityProviderStatus defines the observed state of CarbonIntensityProvider
@@ -63,50 +61,24 @@ type CarbonIntensityProviderStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Zone            *string            `json:"zone,omitempty"`
-	Provider        *string            `json:"provider,omitempty"`
-	LastForecast    *metav1.Time       `json:"lastForecast,omitempty"`
-	LastUpdate      *metav1.Time       `json:"lastUpdate,omitempty"`
-	NextUpdate      *metav1.Time       `json:"nextUpdate,omitempty"`
-	CarbonIntensity *string            `json:"carbonIntensity,omitempty"`
-	Conditions      []metav1.Condition `json:"conditions"`
-}
+	Region *string `json:"region,omitempty"`
+	//Provider        *string      `json:"provider,omitempty"`
+	LastForecast    *metav1.Time `json:"lastForecast,omitempty"`
+	LastUpdate      *metav1.Time `json:"lastUpdate,omitempty"`
+	NextUpdate      *metav1.Time `json:"nextUpdate,omitempty"`
+	CarbonIntensity *string      `json:"carbonIntensity,omitempty"`
 
-type WattTimeConfigurationSpec struct {
-	Username string              `json:"username"`
-	Region   string              `json:"region"`
-	Password *v1.SecretReference `json:"password"`
-}
-
-type ElectricityMapsConfigurationSpec struct {
-	// +kubebuilder:validation:Enum=commercial;commercial_trial;free_tier
-	// +kubebuilder:default:=free_tier
-	Subscription            string              `json:"subscription"`
-	CommercialTrialEndpoint *string             `json:"commercialTrialEndpoint,omitempty"`
-	Zone                    string              `json:"zone"`
-	ApiKey                  *v1.SecretReference `json:"apiKey"`
-}
-
-type SimulatorConfigurationSpec struct {
-
-	// +kubebuilder:default:=false
-	Randomize *bool `json:"randomize,omitempty"`
-
-	// +kubebuilder:default:=SIM-1
-	Zone string `json:"zone"`
-}
-
-type GeolocationSpec struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	// Conditions store the status conditions of the Memcached instances
+	// +operator-sdk:csv:customresourcedefinitions:type=status
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // CarbonIntensityProvider is the Schema for the carbonintensityproviders API
-// +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
-// +kubebuilder:printcolumn:name="Zone",type=string,JSONPath=`.status.zone`
+// +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.providerRef.name`
+// +kubebuilder:printcolumn:name="Region",type=string,JSONPath=`.status.region`
 // +kubebuilder:printcolumn:name="Forecast INVL(h)",type=string,JSONPath=`.spec.forecastRefreshIntervalHours`
 // +kubebuilder:printcolumn:name="Last Forecast",type=string,JSONPath=`.status.lastForecast`
 // +kubebuilder:printcolumn:name="CI (gCO2eq/KWh)",type=string,JSONPath=`.status.carbonIntensity`

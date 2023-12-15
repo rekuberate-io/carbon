@@ -8,4 +8,7 @@ const (
 	OperatorConfigMapDeploymentFailedReason  = "ConfigMapDeploymentFailed"
 	OperatorReconcileSucceededReason         = "ReconcileSucceeded"
 	OperatorReconcileFailedReason            = "ReconcileFailed"
+
+	ConditionHealthy string = "Healthy"
+	UnknownReason    string = "Unknown"
 )

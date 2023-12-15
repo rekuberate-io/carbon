@@ -21,24 +21,24 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/rekuberate-io/carbon/controllers/metrics"
-	"github.com/rekuberate-io/carbon/providers"
-	"github.com/rekuberate-io/carbon/providers/simulator"
+	"github.com/go-logr/logr"
+	"github.com/rekuberate-io/carbon/pkg/providers"
+	"github.com/rekuberate-io/carbon/pkg/providers/electricitymaps"
+	"github.com/rekuberate-io/carbon/pkg/providers/simulator"
+	"github.com/rekuberate-io/carbon/pkg/providers/watttime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +51,25 @@ const (
 	labelProviderInstance = "core.rekuberate.io/carbon-provider-instance"
 	labelProviderType     = "core.rekuberate.io/carbon-provider-type"
 	labelProviderZone     = "core.rekuberate.io/carbon-provider-zone"
+)
+
+var (
+	eventFilters = builder.WithPredicates(predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// We only need to check generation changes here, because it is only
+			// updated on spec changes. On the other hand RevisionVersion
+			// changes also on status changes. We want to omit reconciliation
+			// for status updates.
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// DeleteStateUnknown evaluates to false only if the object
+			// has been confirmed as deleted by the api server.
+			return !e.DeleteStateUnknown
+		},
+	})
+	logger logr.Logger
+	dbglvl int = 5
 )
 
 // CarbonIntensityProviderReconciler reconciles a CarbonIntensityProvider object
@@ -72,348 +91,104 @@ type CarbonIntensityProviderReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithName("controller")
-	var err error
+	logger = log.FromContext(ctx).WithName("carbon-controller")
 
-	var cip carbonv1alpha1.CarbonIntensityProvider
-	if err = r.Get(ctx, req.NamespacedName, &cip); err != nil {
+	current := &carbonv1alpha1.CarbonIntensityProvider{}
+	if err := r.Get(ctx, req.NamespacedName, current); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 
-		metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-
-		msg := "unable to fetch carbon intensity provider"
-		logger.V(5).Error(err, "unable to fetch carbon intensity provider")
-		r.Recorder.Event(&cip, "Warning", OperatorResourceNotAvailableReason, msg)
-
-		return r.SetCondition(
-			ctx,
-			&cip,
-			OperatorSucceededCondition,
-			OperatorResourceNotAvailableReason,
-			metav1.ConditionFalse,
-			client.IgnoreNotFound(err),
-			msg,
-			nil,
-		)
+		logger.V(dbglvl).Error(err, "unable to fetch carbon intensity provider")
+		return ctrl.Result{}, err
 	}
 
-	var provider providers.Provider
-	var zone string
-	providerType := providers.ProviderType(cip.Spec.Provider)
-	patch := client.MergeFrom(cip.DeepCopy())
+	desired := current.DeepCopy()
 
-	switch providerType {
-	case providers.WattTime:
-		if cip.Spec.WattTimeConfiguration == nil {
-			err = errors.New("missing configuration in yaml")
-			break
+	if current.Status.Conditions == nil {
+		conditions := carbonv1alpha1.GetConditions()
+		for _, condition := range conditions {
+			meta.SetStatusCondition(&desired.Status.Conditions, condition)
 		}
 
-		zone = cip.Spec.WattTimeConfiguration.Region
-
-		passwordRef := cip.Spec.WattTimeConfiguration.Password
-		objectKey := client.ObjectKey{
-			Namespace: req.Namespace,
-			Name:      passwordRef.Name,
-		}
-
-		var secret corev1.Secret
-		if err := r.Get(ctx, objectKey, &secret); err != nil {
-			msg := "finding secret failed"
-			logger.Error(err, msg)
-			r.Recorder.Event(&cip, "Warning", OperatorResourceNotAvailableReason, msg)
-
-			metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-
-			return r.SetCondition(
-				ctx,
-				&cip,
-				OperatorSucceededCondition,
-				OperatorResourceNotAvailableReason,
-				metav1.ConditionFalse,
-				client.IgnoreNotFound(err),
-				msg,
-				nil,
-			)
-		}
-
-		password := string(secret.Data["password"])
-		provider, err = providers.NewWattTimeProvider(ctx, cip.Spec.WattTimeConfiguration.Username, password)
-	case providers.ElectricityMaps:
-		if cip.Spec.ElectricityMapsConfiguration == nil {
-			err = errors.New("missing configuration in yaml")
-			break
-		}
-
-		zone = cip.Spec.ElectricityMapsConfiguration.Zone
-
-		apiKeyRef := cip.Spec.ElectricityMapsConfiguration.ApiKey
-		objectKey := client.ObjectKey{
-			Namespace: req.Namespace,
-			Name:      apiKeyRef.Name,
-		}
-
-		var secret corev1.Secret
-		if err := r.Get(ctx, objectKey, &secret); err != nil {
-			msg := "finding secret failed"
-			logger.Error(err, msg)
-			r.Recorder.Event(&cip, "Warning", OperatorResourceNotAvailableReason, msg)
-
-			metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-
-			return r.SetCondition(
-				ctx,
-				&cip,
-				OperatorSucceededCondition,
-				OperatorResourceNotAvailableReason,
-				metav1.ConditionFalse,
-				client.IgnoreNotFound(err),
-				msg,
-				nil,
-			)
-		}
-
-		apiKey := string(secret.Data["apiKey"])
-		subscriptionType := providers.SubscriptionType(cip.Spec.ElectricityMapsConfiguration.Subscription)
-
-		switch subscriptionType {
-		case providers.Commercial:
-			provider, err = providers.NewElectricityMapsProvider(apiKey)
-		case providers.CommercialTrial:
-			provider, err = providers.NewElectricityMapsCommercialTrialProvider(
-				apiKey,
-				cip.Spec.ElectricityMapsConfiguration.CommercialTrialEndpoint,
-			)
-		case providers.FreeTier:
-			provider, err = providers.NewElectricityMapsFreeTierProvider(apiKey)
-		}
-	case providers.Simulator:
-		if cip.Spec.SimulatorConfiguration == nil {
-			err = errors.New("missing configuration in yaml")
-			break
-		}
-
-		zone = cip.Spec.SimulatorConfiguration.Zone
-		provider, err = simulator.NewCarbonIntensityProviderSimulator(
-			zone,
-			*cip.Spec.SimulatorConfiguration.Randomize,
-		)
-	}
-
-	if err != nil {
-		msg := "unable to initialize provider"
-		logger.Error(err, msg, msg, "providerType", providerType)
-		r.Recorder.Event(&cip, "Warning", OperatorInitializeProviderFailedReason, msg)
-
-		metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-
-		return r.SetCondition(
-			ctx,
-			&cip,
-			OperatorSucceededCondition,
-			OperatorInitializeProviderFailedReason,
-			metav1.ConditionFalse,
-			client.IgnoreNotFound(err),
-			msg,
-			nil,
-		)
-
-	}
-
-	carbonIntensity, err := provider.GetCurrent(ctx, zone)
-	if err != nil {
-		msg := "request to provider failed"
-		logger.Error(err, msg, "providerType", providerType)
-		r.Recorder.Event(&cip, "Warning", OperatorReconcileFailedReason, msg)
-
-		carbonIntensity = -1
-	}
-
-	var carbonIntensityAsString string
-	if carbonIntensity < 0 {
-		carbonIntensity = 0
-		carbonIntensityAsString = "n/a"
-	} else {
-		carbonIntensityAsString = fmt.Sprintf("%.2f", carbonIntensity)
-	}
-
-	objectKey := client.ObjectKey{
-		Namespace: req.Namespace,
-		Name:      fmt.Sprintf("%s-forecast", req.Name),
-	}
-
-	var createConfigMap bool = false //cip.Status.Provider == nil || cip.Status.Zone == nil || cip.Spec.Provider != *cip.Status.Provider || zone != cip.Status.Zone
-	var deleteConfigMap bool = true
-	var updateForecast bool = false
-
-	if cip.Status.Provider == nil || cip.Status.Zone == nil {
-		createConfigMap = true
-	} else {
-		if cip.Spec.Provider != *cip.Status.Provider || zone != *cip.Status.Zone {
-			createConfigMap = true
-		}
-	}
-
-	configMap := &corev1.ConfigMap{}
-	err = r.Get(ctx, objectKey, configMap)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			deleteConfigMap = false
-			createConfigMap = true
-		}
-	}
-
-	timestamp := time.Now()
-
-	updateForecast = createConfigMap || (cip.Status.LastForecast == nil || cip.Status.LastForecast.Add(time.Duration(cip.Spec.ForecastRefreshIntervalInHours)*time.Minute).Before(time.Now()))
-	if updateForecast {
-		lastForecast := cip.Status.LastForecast
-		cip.Status.LastForecast = &metav1.Time{Time: timestamp}
-
-		forecast, err := provider.GetForecast(ctx, zone)
+		res, err := r.updateStatus(ctx, current, desired)
 		if err != nil {
-			msg := "request to provider failed"
-			logger.Error(err, msg, "providerType", providerType)
-			r.Recorder.Event(&cip, "Warning", OperatorReconcileFailedReason, msg)
-
-			cip.Status.LastForecast = lastForecast
-		}
-
-		if deleteConfigMap {
-			err := r.Delete(ctx, configMap)
-			if err != nil {
-				msg := "deleting configmap failed"
-				logger.Error(err, msg, "objectKey", objectKey)
-				r.Recorder.Event(&cip, "Warning", OperatorConfigMapDeploymentFailedReason, msg)
-
-				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-				return ctrl.Result{}, err
-			}
-		}
-
-		if forecast != nil {
-			configMap, err = r.PrepareConfigMap(req, forecast, zone, cip.Status.LastForecast.Time, providerType, true)
-			if err != nil {
-				msg := "preparing configmap failed"
-				logger.Error(err, msg, "objectKey", objectKey)
-				r.Recorder.Event(&cip, "Warning", OperatorConfigMapDeploymentFailedReason, msg)
-
-				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-				return ctrl.Result{}, err
-			}
-
-			err = r.Create(ctx, configMap)
-			if err != nil {
-				msg := "creating configmap failed"
-				logger.Error(err, msg, "objectKey", objectKey)
-				r.Recorder.Event(&cip, "Warning", OperatorConfigMapDeploymentFailedReason, msg)
-
-				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-
-				return r.SetCondition(
-					ctx,
-					&cip,
-					OperatorSucceededCondition,
-					OperatorConfigMapDeploymentFailedReason,
-					metav1.ConditionFalse,
-					client.IgnoreNotFound(err),
-					msg,
-					nil,
-				)
-			}
-
-			err = controllerutil.SetOwnerReference(&cip, configMap, r.Scheme)
-			if err != nil {
-				msg := "setting owner reference"
-				logger.Error(err, msg, "configmap", configMap.Name)
-				r.Recorder.Event(&cip, "Warning", OperatorConfigMapDeploymentFailedReason, msg)
-
-				metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-
-				return r.SetCondition(
-					ctx,
-					&cip,
-					OperatorSucceededCondition,
-					OperatorConfigMapDeploymentFailedReason,
-					metav1.ConditionFalse,
-					client.IgnoreNotFound(err),
-					msg,
-					nil,
-				)
-			}
+			return res, err
 		}
 	}
 
-	requeueAfter := time.Minute * time.Duration(cip.Spec.LiveRefreshIntervalInHours)
+	providerRef := current.Spec.ProviderRef
+	providerRefKind := strings.ToLower(providerRef.Kind)
 
-	cip.Status.Zone = &zone
-	cip.Status.Provider = &cip.Spec.Provider
-	cip.Status.LastUpdate = &metav1.Time{Time: timestamp}
-	cip.Status.NextUpdate = &metav1.Time{Time: timestamp.Add(requeueAfter)}
-	cip.Status.CarbonIntensity = &carbonIntensityAsString
-	err = r.Status().Patch(ctx, &cip, patch)
-	if err != nil {
-		namespacedName := fmt.Sprintf("%v/%v", cip.Namespace, cip.Name)
-		msg := "failed to patch provider's status"
-		logger.Error(err, msg, "provider", namespacedName)
-		r.Recorder.Event(&cip, "Warning", OperatorResourceStatusUpdateFailedReason, msg)
-
-		metrics.CipReconciliationLoopErrorsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
-
-		return r.SetCondition(
-			ctx,
-			&cip,
-			OperatorSucceededCondition,
-			OperatorResourceStatusUpdateFailedReason,
-			metav1.ConditionFalse,
-			client.IgnoreNotFound(err),
-			msg,
-			nil,
-		)
+	if providerRefKind == "" {
+		err := fmt.Errorf("carbon intensity provider is missing")
+		logger.Error(err, "terminate reconciliation")
+		return ctrl.Result{}, nil
 	}
 
-	metrics.CipLiveCarbonIntensityMetric.WithLabelValues(string(providerType), zone).Set(carbonIntensity)
-	metrics.CipReconciliationLoopsTotal.WithLabelValues(req.NamespacedName.String()).Inc()
+	if !providers.IsSupported(providerRefKind) {
+		err := fmt.Errorf("not supported carbon intensity provider")
+		logger.Error(err, "terminate reconciliation", "providerKind", providerRef.Kind)
+		return ctrl.Result{}, nil
+	}
 
-	msg := "operator successfully reconciled"
-	r.Recorder.Event(&cip, "Normal", OperatorReconcileSucceededReason, msg)
+	providerRefNamespace := req.Namespace
+	if providerRef.Namespace != "" {
+		providerRefNamespace = providerRef.Namespace
+	}
 
-	return r.SetCondition(
-		ctx,
-		&cip,
-		OperatorSucceededCondition,
-		OperatorReconcileSucceededReason,
-		metav1.ConditionTrue,
-		nil,
-		msg,
-		&requeueAfter,
-	)
+	objectKey := client.ObjectKey{Name: providerRef.Name, Namespace: providerRefNamespace}
+	var providerType client.Object
+	var provider providers.Provider
+
+	switch providerRefKind {
+	case string(providers.Simulator):
+		providerType = &carbonv1alpha1.Simulator{}
+		provider = &simulator.Simulator{}
+	case string(providers.WattTime):
+		providerType = &carbonv1alpha1.WattTime{}
+		provider = &watttime.WattTimeProvider{}
+	case string(providers.ElectricityMaps):
+		providerType = &carbonv1alpha1.ElectricityMaps{}
+		provider = &electricitymaps.ElectricityMapsProvider{}
+	}
+
+	if err := r.Get(ctx, objectKey, providerType); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+
+		logger.Error(err, "unable to fetch provider", "provider", objectKey)
+		return ctrl.Result{}, err
+	}
+
+	return r.updateStatus(ctx, current, desired)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CarbonIntensityProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&carbonv1alpha1.CarbonIntensityProvider{}).
-		WithEventFilter(ignorePredicates()).
+		For(&carbonv1alpha1.CarbonIntensityProvider{}, eventFilters).
 		Complete(r)
 }
 
-func ignorePredicates() predicate.Predicate {
-	return predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Ignore updates to CR status in which case metadata.Generation does not change
-			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			// Evaluates to false if the object has been confirmed deleted.
-			return !e.DeleteStateUnknown
-		},
+func (r *CarbonIntensityProviderReconciler) updateStatus(
+	ctx context.Context,
+	current *carbonv1alpha1.CarbonIntensityProvider,
+	desired *carbonv1alpha1.CarbonIntensityProvider,
+) (ctrl.Result, error) {
+	if !reflect.DeepEqual(current, desired) {
+		err := r.Status().Update(ctx, desired)
+		if err != nil {
+			logger.Error(err, "unable to update carbon intensity provider status")
+			return ctrl.Result{}, err
+		}
 	}
+
+	return ctrl.Result{}, nil
 }
 
-func (r *CarbonIntensityProviderReconciler) PrepareConfigMap(
+func (r *CarbonIntensityProviderReconciler) prepareConfigMap(
 	req ctrl.Request,
 	forecast []providers.Forecast,
 	zone string,
@@ -467,34 +242,4 @@ func (r *CarbonIntensityProviderReconciler) PrepareConfigMap(
 	}
 
 	return configMap, nil
-}
-
-func (r *CarbonIntensityProviderReconciler) SetCondition(
-	ctx context.Context,
-	cip *carbonv1alpha1.CarbonIntensityProvider,
-	condition string,
-	reason string,
-	status metav1.ConditionStatus,
-	err error,
-	msg string,
-	requeueAfter *time.Duration,
-) (ctrl.Result, error) {
-	meta.SetStatusCondition(&cip.Status.Conditions,
-		metav1.Condition{
-			Type:               condition,
-			Status:             status,
-			LastTransitionTime: metav1.Time{},
-			Reason:             reason,
-			Message:            msg,
-		})
-
-	var result reconcile.Result
-
-	if requeueAfter == nil {
-		result = ctrl.Result{}
-	} else {
-		result = ctrl.Result{RequeueAfter: *requeueAfter}
-	}
-
-	return result, utilerrors.NewAggregate([]error{err, r.Status().Update(ctx, cip)})
 }

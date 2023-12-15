@@ -4,7 +4,8 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"github.com/rekuberate-io/carbon/providers"
+	providers2 "github.com/rekuberate-io/carbon/pkg/providers"
+	"github.com/rekuberate-io/carbon/pkg/providers/electricitymaps"
 	"math/rand"
 	"time"
 )
@@ -26,7 +27,7 @@ type Simulator struct {
 
 func NewCarbonIntensityProviderSimulator(zone string, randomize bool) (*Simulator, error) {
 	if randomize {
-		var result providers.ElectricityMapForecastResult
+		var result electricitymaps.ElectricityMapForecastResult
 		err := json.Unmarshal([]byte(forecast), &result)
 		if err != nil {
 			return nil, err
@@ -50,30 +51,30 @@ func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error
 		return rand.Float64() * (p.max - p.min), nil
 	}
 
-	var result providers.ElectricityMapLiveResult
+	var result electricitymaps.ElectricityMapLiveResult
 	err := json.Unmarshal([]byte(latest), &result)
 	if err != nil {
-		return providers.NoValue, err
+		return providers2.NoValue, err
 	}
 
 	carbonIntensity := float64(result.CarbonIntensity)
 	return carbonIntensity, nil
 }
 
-func (p *Simulator) GetForecast(ctx context.Context, zone string) ([]providers.Forecast, error) {
-	var result providers.ElectricityMapForecastResult
+func (p *Simulator) GetForecast(ctx context.Context, zone string) ([]providers2.Forecast, error) {
+	var result electricitymaps.ElectricityMapForecastResult
 	err := json.Unmarshal([]byte(forecast), &result)
 	if err != nil {
 		return nil, err
 	}
 
-	forecasts := make([]providers.Forecast, 0)
+	forecasts := make([]providers2.Forecast, 0)
 	pointTime := time.Now()
 
 	for range result.Forecast {
 		pointTime = pointTime.Add(1 * time.Hour)
 
-		forecast := providers.Forecast{
+		forecast := providers2.Forecast{
 			PointTime:       pointTime,
 			CarbonIntensity: rand.Float64() * (p.max - p.min),
 		}
@@ -84,7 +85,7 @@ func (p *Simulator) GetForecast(ctx context.Context, zone string) ([]providers.F
 	return forecasts, nil
 }
 
-func getMaxMin(results providers.ElectricityMapForecastResult) (int, int) {
+func getMaxMin(results electricitymaps.ElectricityMapForecastResult) (int, int) {
 	var max int = results.Forecast[0].CarbonIntensity
 	var min int = results.Forecast[0].CarbonIntensity
 

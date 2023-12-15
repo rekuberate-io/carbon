@@ -1,0 +1,31 @@
+# permissions for end users to edit simulators.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: simulator-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: carbon
+    app.kubernetes.io/part-of: carbon
+    app.kubernetes.io/managed-by: kustomize
+  name: simulator-editor-role
+rules:
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - simulators
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - simulators/status
+  verbs:
+  - get

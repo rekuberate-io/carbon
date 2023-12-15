@@ -11,19 +11,7 @@ metadata:
 spec:
   forecastRefreshIntervalHours: 12
   liveRefreshIntervalHours: 1
-  provider: simulator
   emissionsType: marginal
-  watttime :
-    username: rekuberate_test
-    region: CAISO_NORTH
-    password:
-      name: watttime-password
-  electricitymaps:
-    subscription: commercial_trial
-    commercialTrialEndpoint: /2w97h07rvxvuaa1g
-    zone: DE
-    apiKey:
-      name: electricitymaps-apikey
-  simulator:
-    randomize: true
-    zone: SIM-2
+  providerRef:
+    kind: Simulator
+    name: simulator-sample

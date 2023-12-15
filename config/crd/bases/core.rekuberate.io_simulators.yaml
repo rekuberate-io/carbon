@@ -1,0 +1,61 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  creationTimestamp: null
+  name: simulators.core.rekuberate.io
+spec:
+  group: core.rekuberate.io
+  names:
+    kind: Simulator
+    listKind: SimulatorList
+    plural: simulators
+    singular: simulator
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.randomize
+      name: Randomize
+      type: string
+    - jsonPath: .spec.region
+      name: Zone
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Simulator is the Schema for the simulators API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SimulatorSpec defines the desired state of Simulator
+            properties:
+              randomize:
+                default: false
+                type: boolean
+              region:
+                default: SIM-1
+                type: string
+            required:
+            - region
+            type: object
+          status:
+            description: SimulatorStatus defines the observed state of Simulator
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

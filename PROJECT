@@ -20,4 +20,28 @@ resources:
   kind: CarbonIntensityProvider
   path: github.com/rekuberate-io/carbon/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: rekuberate.io
+  group: core
+  kind: WattTime
+  path: github.com/rekuberate-io/carbon/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: rekuberate.io
+  group: core
+  kind: Simulator
+  path: github.com/rekuberate-io/carbon/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: rekuberate.io
+  group: core
+  kind: ElectricityMaps
+  path: github.com/rekuberate-io/carbon/api/v1alpha1
+  version: v1alpha1
 version: "3"
