@@ -4,7 +4,8 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	providers2 "github.com/rekuberate-io/carbon/pkg/providers"
+	carbonv1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
+	"github.com/rekuberate-io/carbon/pkg/common"
 	"github.com/rekuberate-io/carbon/pkg/providers/electricitymaps"
 	"math/rand"
 	"time"
@@ -20,83 +21,92 @@ var (
 
 type Simulator struct {
 	randomize bool
-	zone      string
+	region    string
 	max       float64
 	min       float64
 }
 
-func NewCarbonIntensityProviderSimulator(zone string, randomize bool) (*Simulator, error) {
+func NewProvider(o carbonv1alpha1.Simulator) (*Simulator, error) {
+	randomize := *o.Spec.Randomize
+	region := o.Spec.Region
+
 	if randomize {
-		var result electricitymaps.ElectricityMapForecastResult
+		var result ForecastResult
 		err := json.Unmarshal([]byte(forecast), &result)
 		if err != nil {
 			return nil, err
 		}
 
-		max, min := getMaxMin(result)
+		mx, mn := getMaxMin(result)
 
 		return &Simulator{
-			zone:      zone,
+			region:    region,
 			randomize: randomize,
-			max:       float64(max),
-			min:       float64(min),
+			max:       float64(mx),
+			min:       float64(mn),
 		}, nil
 	}
 
-	return &Simulator{zone: zone, randomize: randomize}, nil
+	return &Simulator{region: region, randomize: randomize}, nil
 }
 
-func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error) {
+func (p *Simulator) GetCurrent(ctx context.Context) (float64, error) {
 	if p.randomize {
 		return rand.Float64() * (p.max - p.min), nil
 	}
 
-	var result electricitymaps.ElectricityMapLiveResult
+	var result electricitymaps.LiveResult
 	err := json.Unmarshal([]byte(latest), &result)
 	if err != nil {
-		return providers2.NoValue, err
+		return common.NoValue, err
 	}
 
 	carbonIntensity := float64(result.CarbonIntensity)
 	return carbonIntensity, nil
 }
 
-func (p *Simulator) GetForecast(ctx context.Context, zone string) ([]providers2.Forecast, error) {
-	var result electricitymaps.ElectricityMapForecastResult
+func (p *Simulator) GetForecast(ctx context.Context) (map[time.Time]float64, error) {
+	var result ForecastResult
 	err := json.Unmarshal([]byte(forecast), &result)
 	if err != nil {
 		return nil, err
 	}
 
-	forecasts := make([]providers2.Forecast, 0)
+	forecasts := make(map[time.Time]float64)
 	pointTime := time.Now()
 
 	for range result.Forecast {
 		pointTime = pointTime.Add(1 * time.Hour)
 
-		forecast := providers2.Forecast{
-			PointTime:       pointTime,
-			CarbonIntensity: rand.Float64() * (p.max - p.min),
-		}
+		//forecast := providers.Forecast{
+		//	PointTime:       pointTime,
+		//	CarbonIntensity: rand.Float64() * (p.max - p.min),
+		//}
+		//
+		//forecasts = append(forecasts, forecast)
 
-		forecasts = append(forecasts, forecast)
+		forecasts[pointTime] = rand.Float64() * (p.max - p.min)
 	}
 
 	return forecasts, nil
 }
 
-func getMaxMin(results electricitymaps.ElectricityMapForecastResult) (int, int) {
-	var max int = results.Forecast[0].CarbonIntensity
-	var min int = results.Forecast[0].CarbonIntensity
+func (p *Simulator) Region() string {
+	return p.region
+}
+
+func getMaxMin(results ForecastResult) (int, int) {
+	var mx int = results.Forecast[0].CarbonIntensity
+	var mn int = results.Forecast[0].CarbonIntensity
 
 	for _, value := range results.Forecast {
-		if max < value.CarbonIntensity {
-			max = value.CarbonIntensity
+		if mx < value.CarbonIntensity {
+			mx = value.CarbonIntensity
 		}
-		if min > value.CarbonIntensity {
-			min = value.CarbonIntensity
+		if mn > value.CarbonIntensity {
+			mn = value.CarbonIntensity
 		}
 	}
 
-	return max, min
+	return mx, mn
 }

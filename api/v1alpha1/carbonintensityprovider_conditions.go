@@ -4,11 +4,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	ProviderInitPending  = "ProviderInitPending"
+	ProviderInitFailed   = "ProviderInitFailed"
+	ProviderInitFinished = "ProviderInitFinished"
+)
+
 var (
 	ConditionHealthy = metav1.Condition{
 		Type:   "Available",
 		Status: metav1.ConditionUnknown,
-		Reason: "InitCarbonIntensityProvider",
+		Reason: ProviderInitPending,
 	}
 )
 

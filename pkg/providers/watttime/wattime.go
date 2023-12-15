@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rekuberate-io/carbon/pkg/providers"
+	carbonv1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
+	"github.com/rekuberate-io/carbon/pkg/common"
 	"io"
+	corev1 "k8s.io/api/core/v1"
 	"net/http"
 	"net/url"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"time"
 )
@@ -19,33 +22,16 @@ const (
 	lbsTogramms               float64 = 453.59237
 )
 
-type WattTimeLiveResult struct {
-	BalancingAuthority string    `json:"ba"`
-	Frequency          string    `json:"freq"`
-	Percent            string    `json:"percent"`
-	MOER               string    `json:"moer"`
-	PointTime          time.Time `json:"point_time"`
-}
-
-type WattTimeForecastResult struct {
-	GeneratedAt time.Time `json:"generated_at"`
-	Forecast    []struct {
-		PointTime time.Time `json:"point_time"`
-		Value     float64   `json:"value"`
-		Version   string    `json:"version"`
-		Ba        string    `json:"ba"`
-	} `json:"forecast"`
-}
-
 type WattTimeProvider struct {
 	baseUrl  *url.URL
 	username string
 	password string
+	region   string
 	token    string
 	client   *http.Client
 }
 
-func NewWattTimeProvider(ctx context.Context, username string, password string) (*WattTimeProvider, error) {
+func NewProvider(ctx context.Context, k client.Client, o carbonv1alpha1.WattTime) (*WattTimeProvider, error) {
 	watttime := &WattTimeProvider{client: &http.Client{
 		Timeout: 10 * time.Second,
 	}}
@@ -55,9 +41,19 @@ func NewWattTimeProvider(ctx context.Context, username string, password string) 
 		return nil, err
 	}
 
+	passwordRef := o.Spec.Password
+	objectKey := client.ObjectKey{
+		Namespace: passwordRef.Namespace,
+		Name:      passwordRef.Name,
+	}
+	secret := &corev1.Secret{}
+	if err := k.Get(ctx, objectKey, secret); err != nil {
+		return nil, err
+	}
+
 	watttime.baseUrl = baseUrl
-	watttime.username = username
-	watttime.password = password
+	watttime.username = o.Spec.Username
+	watttime.password = string(secret.Data["password"])
 
 	err = watttime.login(ctx)
 	if err != nil {
@@ -71,7 +67,7 @@ func (p *WattTimeProvider) login(ctx context.Context) error {
 	//relativeLoginUrl := &url.URL{Path: "/v2/login"}
 	//loginUrl := p.baseUrl.ResolveReference(relativeLoginUrl)
 
-	loginUrl := providers.ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/login"})
+	loginUrl := common.ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/login"})
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, loginUrl.String(), nil)
 	if err != nil {
 		return err
@@ -109,61 +105,61 @@ func (p *WattTimeProvider) login(ctx context.Context) error {
 	return nil
 }
 
-func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone string) (float64, error) {
-	requestUrl := providers.ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/index"})
+func (p *WattTimeProvider) GetCurrent(ctx context.Context) (float64, error) {
+	requestUrl := common.ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/index"})
 	params := url.Values{}
-	params.Add("ba", zone)
+	params.Add("ba", p.region)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
 	if err != nil {
-		return providers.NoValue, err
+		return common.NoValue, err
 	}
 
 	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", p.token))
 	response, err := p.client.Do(request)
 	if err != nil {
-		return providers.NoValue, err
+		return common.NoValue, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		apierr, msg, err := p.unwrapHttpResponseErrorPayload(response)
 		if err != nil {
-			return providers.NoValue, errors.New(response.Status)
+			return common.NoValue, errors.New(response.Status)
 		}
 
-		return providers.NoValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
+		return common.NoValue, errors.New(fmt.Sprintf("%s; %s: %s", response.Status, apierr, msg))
 	}
 
 	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return providers.NoValue, err
+		return common.NoValue, err
 	}
 
-	var result WattTimeLiveResult
+	var result LiveResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return providers.NoValue, err
+		return common.NoValue, err
 	}
 
 	moer, err := strconv.ParseFloat(result.MOER, 64)
 	if err != nil {
-		return providers.NoValue, nil
+		return common.NoValue, nil
 	}
 
 	carbonIntensity := moer * lbsTogramms / 1000
 	return carbonIntensity, nil
 }
 
-func (p *WattTimeProvider) GetForecast(ctx context.Context, zone string) ([]providers.Forecast, error) {
-	requestUrl := providers.ResolveAbsoluteUriReference(
+func (p *WattTimeProvider) GetForecast(ctx context.Context) (map[time.Time]float64, error) {
+	requestUrl := common.ResolveAbsoluteUriReference(
 		p.baseUrl,
 		&url.URL{Path: wattTimeApiVersionUrlPath},
 		&url.URL{Path: "/forecast"},
 	)
 	params := url.Values{}
-	params.Add("ba", zone)
+	params.Add("ba", p.region)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
@@ -192,23 +188,28 @@ func (p *WattTimeProvider) GetForecast(ctx context.Context, zone string) ([]prov
 		return nil, err
 	}
 
-	var result WattTimeForecastResult
+	var result ForecastResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	forecasts := make([]providers.Forecast, 0)
+	forecasts := make(map[time.Time]float64)
 	for _, f := range result.Forecast {
-		forecast := providers.Forecast{
-			PointTime:       f.PointTime,
-			CarbonIntensity: f.Value,
-		}
-
-		forecasts = append(forecasts, forecast)
+		//forecast := providers.Forecast{
+		//	PointTime:       f.PointTime,
+		//	CarbonIntensity: f.Value,
+		//}
+		//
+		//forecasts = append(forecasts, forecast)
+		forecasts[f.PointTime] = f.Value
 	}
 
 	return forecasts, nil
+}
+
+func (p *WattTimeProvider) Region() string {
+	return p.region
 }
 
 func (p *WattTimeProvider) unwrapHttpResponseErrorPayload(response *http.Response) (apiError string, message string, err error) {

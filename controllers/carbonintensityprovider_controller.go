@@ -24,9 +24,6 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/rekuberate-io/carbon/pkg/providers"
-	"github.com/rekuberate-io/carbon/pkg/providers/electricitymaps"
-	"github.com/rekuberate-io/carbon/pkg/providers/simulator"
-	"github.com/rekuberate-io/carbon/pkg/providers/watttime"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -118,49 +114,28 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	providerRef := current.Spec.ProviderRef
-	providerRefKind := strings.ToLower(providerRef.Kind)
+	provider, err := providers.GetProvider(ctx, req, r.Client, providerRef)
+	if err != nil {
+		condition := carbonv1alpha1.ConditionHealthy.DeepCopy()
+		condition.Status = metav1.ConditionFalse
+		condition.Reason = carbonv1alpha1.ProviderInitFailed
+		condition.Message = err.Error()
+		meta.SetStatusCondition(&desired.Status.Conditions, *condition)
 
-	if providerRefKind == "" {
-		err := fmt.Errorf("carbon intensity provider is missing")
-		logger.Error(err, "terminate reconciliation")
-		return ctrl.Result{}, nil
-	}
+		logger.Error(err, "unable to get provider", "providerKind", providerRef.Kind)
+		r.updateStatus(ctx, current, desired)
 
-	if !providers.IsSupported(providerRefKind) {
-		err := fmt.Errorf("not supported carbon intensity provider")
-		logger.Error(err, "terminate reconciliation", "providerKind", providerRef.Kind)
-		return ctrl.Result{}, nil
-	}
-
-	providerRefNamespace := req.Namespace
-	if providerRef.Namespace != "" {
-		providerRefNamespace = providerRef.Namespace
-	}
-
-	objectKey := client.ObjectKey{Name: providerRef.Name, Namespace: providerRefNamespace}
-	var providerType client.Object
-	var provider providers.Provider
-
-	switch providerRefKind {
-	case string(providers.Simulator):
-		providerType = &carbonv1alpha1.Simulator{}
-		provider = &simulator.Simulator{}
-	case string(providers.WattTime):
-		providerType = &carbonv1alpha1.WattTime{}
-		provider = &watttime.WattTimeProvider{}
-	case string(providers.ElectricityMaps):
-		providerType = &carbonv1alpha1.ElectricityMaps{}
-		provider = &electricitymaps.ElectricityMapsProvider{}
-	}
-
-	if err := r.Get(ctx, objectKey, providerType); err != nil {
-		if apierrors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-
-		logger.Error(err, "unable to fetch provider", "provider", objectKey)
 		return ctrl.Result{}, err
 	}
+
+	region := provider.Region()
+	desired.Status.Region = &region
+
+	condition := carbonv1alpha1.ConditionHealthy.DeepCopy()
+	condition.Status = metav1.ConditionTrue
+	condition.Reason = carbonv1alpha1.ProviderInitFinished
+	condition.Message = fmt.Sprintf("Initialized Provider '%s', (%s)", providerRef.Name, providerRef.Kind)
+	meta.SetStatusCondition(&desired.Status.Conditions, *condition)
 
 	return r.updateStatus(ctx, current, desired)
 }
@@ -190,10 +165,10 @@ func (r *CarbonIntensityProviderReconciler) updateStatus(
 
 func (r *CarbonIntensityProviderReconciler) prepareConfigMap(
 	req ctrl.Request,
-	forecast []providers.Forecast,
+	forecast map[time.Time]float64,
 	zone string,
 	pointTime time.Time,
-	providerType providers.ProviderType,
+	providerType string,
 	immutable bool,
 ) (*corev1.ConfigMap, error) {
 
