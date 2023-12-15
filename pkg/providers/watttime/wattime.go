@@ -64,9 +64,6 @@ func NewProvider(ctx context.Context, k client.Client, o carbonv1alpha1.WattTime
 }
 
 func (p *WattTimeProvider) login(ctx context.Context) error {
-	//relativeLoginUrl := &url.URL{Path: "/v2/login"}
-	//loginUrl := p.baseUrl.ResolveReference(relativeLoginUrl)
-
 	loginUrl := common.ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/login"})
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, loginUrl.String(), nil)
 	if err != nil {
@@ -196,12 +193,6 @@ func (p *WattTimeProvider) GetForecast(ctx context.Context) (map[time.Time]float
 
 	forecasts := make(map[time.Time]float64)
 	for _, f := range result.Forecast {
-		//forecast := providers.Forecast{
-		//	PointTime:       f.PointTime,
-		//	CarbonIntensity: f.Value,
-		//}
-		//
-		//forecasts = append(forecasts, forecast)
 		forecasts[f.PointTime] = f.Value
 	}
 

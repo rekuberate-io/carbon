@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	carbonv1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
 	"github.com/rekuberate-io/carbon/pkg/common"
-	"github.com/rekuberate-io/carbon/pkg/providers/electricitymaps"
 	"math/rand"
 	"time"
 )
@@ -55,7 +54,7 @@ func (p *Simulator) GetCurrent(ctx context.Context) (float64, error) {
 		return rand.Float64() * (p.max - p.min), nil
 	}
 
-	var result electricitymaps.LiveResult
+	var result LiveResult
 	err := json.Unmarshal([]byte(latest), &result)
 	if err != nil {
 		return common.NoValue, err
@@ -77,14 +76,6 @@ func (p *Simulator) GetForecast(ctx context.Context) (map[time.Time]float64, err
 
 	for range result.Forecast {
 		pointTime = pointTime.Add(1 * time.Hour)
-
-		//forecast := providers.Forecast{
-		//	PointTime:       pointTime,
-		//	CarbonIntensity: rand.Float64() * (p.max - p.min),
-		//}
-		//
-		//forecasts = append(forecasts, forecast)
-
 		forecasts[pointTime] = rand.Float64() * (p.max - p.min)
 	}
 

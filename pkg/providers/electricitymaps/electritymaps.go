@@ -221,12 +221,6 @@ func (p *ElectricityMapsProvider) GetForecast(ctx context.Context) (map[time.Tim
 
 	forecasts := make(map[time.Time]float64)
 	for _, f := range result.Forecast {
-		//forecast := providers.Forecast{
-		//	PointTime:       f.Datetime,
-		//	CarbonIntensity: float64(f.CarbonIntensity),
-		//}
-		//
-		//forecasts = append(forecasts, forecast)
 		forecasts[f.Datetime] = float64(f.CarbonIntensity)
 	}
 
