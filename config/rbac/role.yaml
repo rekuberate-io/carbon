@@ -58,3 +58,27 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - electricitymaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - simulators
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - core.rekuberate.io
+  resources:
+  - watttimes
+  verbs:
+  - get
+  - list
+  - watch

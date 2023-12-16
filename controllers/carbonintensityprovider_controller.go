@@ -80,6 +80,9 @@ type CarbonIntensityProviderReconciler struct {
 //+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityproviders,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityproviders/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityproviders/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core.rekuberate.io,resources=electricitymaps,verbs=get;list;watch
+//+kubebuilder:rbac:groups=core.rekuberate.io,resources=watttimes,verbs=get;list;watch
+//+kubebuilder:rbac:groups=core.rekuberate.io,resources=simulators,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -147,9 +150,9 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	// get carbon intensity forecast
-
 	// TODO: change to time.Hours
-	if before.Status.LastForecast.Add(time.Duration(before.Spec.ForecastRefreshIntervalInHours) * time.Minute).Before(time.Now()) {
+	if before.Status.LastForecast == nil ||
+		before.Status.LastForecast.Add(time.Duration(before.Spec.ForecastRefreshIntervalInHours)*time.Minute).Before(time.Now()) {
 		_, err = provider.GetForecast(ctx, before.Spec.Zone)
 		if err != nil {
 			logger.Error(err, "unable to get carbon intensity forecast", "providerKind", providerRef.Kind, "provider", providerRef.Name)

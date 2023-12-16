@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: akyriako78/rekuberate-carbon
-  newTag: dev
+  newTag: dev.0.0.3
