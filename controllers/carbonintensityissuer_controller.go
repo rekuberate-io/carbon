@@ -187,6 +187,7 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 		return result, err
 	}
 
+	// TODO: set N/A value as well in metric
 	if carbonIntensity > 0 {
 		metrics.CipLiveCarbonIntensityMetric.WithLabelValues(
 			providerRef.Kind,
