@@ -27,9 +27,8 @@ var (
 )
 
 type Provider interface {
-	GetCurrent(ctx context.Context) (float64, error)
-	GetForecast(ctx context.Context) (map[time.Time]float64, error)
-	Region() string
+	GetCurrent(ctx context.Context, zone string) (float64, error)
+	GetForecast(ctx context.Context, zone string) (map[time.Time]float64, error)
 }
 
 //

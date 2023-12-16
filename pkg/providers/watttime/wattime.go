@@ -26,7 +26,6 @@ type WattTimeProvider struct {
 	baseUrl  *url.URL
 	username string
 	password string
-	region   string
 	token    string
 	client   *http.Client
 }
@@ -102,10 +101,10 @@ func (p *WattTimeProvider) login(ctx context.Context) error {
 	return nil
 }
 
-func (p *WattTimeProvider) GetCurrent(ctx context.Context) (float64, error) {
+func (p *WattTimeProvider) GetCurrent(ctx context.Context, zone string) (float64, error) {
 	requestUrl := common.ResolveAbsoluteUriReference(p.baseUrl, &url.URL{Path: wattTimeApiVersionUrlPath}, &url.URL{Path: "/index"})
 	params := url.Values{}
-	params.Add("ba", p.region)
+	params.Add("ba", zone)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
@@ -149,14 +148,14 @@ func (p *WattTimeProvider) GetCurrent(ctx context.Context) (float64, error) {
 	return carbonIntensity, nil
 }
 
-func (p *WattTimeProvider) GetForecast(ctx context.Context) (map[time.Time]float64, error) {
+func (p *WattTimeProvider) GetForecast(ctx context.Context, zone string) (map[time.Time]float64, error) {
 	requestUrl := common.ResolveAbsoluteUriReference(
 		p.baseUrl,
 		&url.URL{Path: wattTimeApiVersionUrlPath},
 		&url.URL{Path: "/forecast"},
 	)
 	params := url.Values{}
-	params.Add("ba", p.region)
+	params.Add("ba", zone)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
@@ -197,10 +196,6 @@ func (p *WattTimeProvider) GetForecast(ctx context.Context) (map[time.Time]float
 	}
 
 	return forecasts, nil
-}
-
-func (p *WattTimeProvider) Region() string {
-	return p.region
 }
 
 func (p *WattTimeProvider) unwrapHttpResponseErrorPayload(response *http.Response) (apiError string, message string, err error) {

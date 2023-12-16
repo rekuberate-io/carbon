@@ -28,9 +28,6 @@ type SimulatorSpec struct {
 	// +kubebuilder:default:=false
 	// +kubebuilder:validation:Type=boolean
 	Randomize *bool `json:"randomize,omitempty"`
-
-	// +kubebuilder:default:=SIM-1
-	Region string `json:"region"`
 }
 
 // SimulatorStatus defines the observed state of Simulator
@@ -44,7 +41,6 @@ type SimulatorStatus struct {
 
 // Simulator is the Schema for the simulators API
 // +kubebuilder:printcolumn:name="Randomize",type=string,JSONPath=`.spec.randomize`
-// +kubebuilder:printcolumn:name="Zone",type=string,JSONPath=`.spec.region`
 type Simulator struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

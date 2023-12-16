@@ -3,13 +3,12 @@ kind: WattTime
 metadata:
   labels:
     app.kubernetes.io/name: watttime
-    app.kubernetes.io/instance: watttime-caiso-north
+    app.kubernetes.io/instance: watttime-sample
     app.kubernetes.io/part-of: carbon
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: carbon
-  name: watttime-caiso-north
+  name: watttime-sample
 spec:
   username: rekuberate_test
-  region: CAISO_NORTH
   password:
     name: watttime-password

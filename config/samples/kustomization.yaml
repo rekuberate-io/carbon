@@ -1,7 +1,7 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- core_v1alpha1_carbonintensityprovider.yaml
-- core_v1alpha1_carbonintensityprovider2.yaml
+- core_v1alpha1_carbonintensityprovider-eu-de.yaml
+- core_v1alpha1_carbonintensityprovider-eu-nl.yaml
 - core_v1alpha1_watttime.yaml
 - core_v1alpha1_simulator.yaml
 - core_v1alpha1_electricitymaps.yaml

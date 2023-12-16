@@ -3,15 +3,15 @@ kind: CarbonIntensityProvider
 metadata:
   labels:
     app.kubernetes.io/name: carbonintensityprovider
-    app.kubernetes.io/instance: carbonintensityprovider-sample
+    app.kubernetes.io/instance: carbonintensityprovider-eu-de
     app.kubernetes.io/part-of: carbon
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: carbon
-  name: carbonintensityprovider-sample
+  name: carbonintensityprovider-eu-de
 spec:
   forecastRefreshIntervalHours: 24
   liveRefreshIntervalHours: 1
-  emissionsType: marginal
+  zone: DE
   providerRef:
     kind: WattTime
-    name: watttime-caiso-north
+    name: watttime-sample

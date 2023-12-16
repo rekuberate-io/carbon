@@ -3,15 +3,15 @@ kind: CarbonIntensityProvider
 metadata:
   labels:
     app.kubernetes.io/name: carbonintensityprovider
-    app.kubernetes.io/instance: carbonintensityprovider-2
+    app.kubernetes.io/instance: carbonintensityprovider-eu-nl
     app.kubernetes.io/part-of: carbon
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: carbon
-  name: carbonintensityprovider-2
+  name: carbonintensityprovider-eu-nl
 spec:
   forecastRefreshIntervalHours: 12
   liveRefreshIntervalHours: 1
-  emissionsType: marginal
+  zone: NL
   providerRef:
     kind: Simulator
     name: simulator-sample

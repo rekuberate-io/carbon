@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/rekuberate-io/carbon/controllers/metrics"
 	"github.com/rekuberate-io/carbon/pkg/providers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -32,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,8 +91,9 @@ type CarbonIntensityProviderReconciler struct {
 func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger = log.FromContext(ctx).WithName("carbon-controller")
 
-	current := &carbonv1alpha1.CarbonIntensityProvider{}
-	if err := r.Get(ctx, req.NamespacedName, current); err != nil {
+	// get carbon intensity provider resource
+	before := &carbonv1alpha1.CarbonIntensityProvider{}
+	if err := r.Get(ctx, req.NamespacedName, before); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -99,45 +102,78 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, err
 	}
 
-	desired := current.DeepCopy()
+	after := before.DeepCopy()
 
-	if current.Status.Conditions == nil {
+	// initialize status conditions
+	if before.Status.Conditions == nil {
 		conditions := carbonv1alpha1.GetConditions()
 		for _, condition := range conditions {
-			meta.SetStatusCondition(&desired.Status.Conditions, condition)
+			meta.SetStatusCondition(&after.Status.Conditions, condition)
 		}
 
-		res, err := r.updateStatus(ctx, current, desired)
+		res, err := r.updateStatus(ctx, before, after)
 		if err != nil {
 			return res, err
 		}
 	}
 
-	providerRef := current.Spec.ProviderRef
+	// get a concrete provider
+	providerRef := before.Spec.ProviderRef
 	provider, err := providers.GetProvider(ctx, req, r.Client, providerRef)
 	if err != nil {
 		condition := carbonv1alpha1.ConditionHealthy.DeepCopy()
 		condition.Status = metav1.ConditionFalse
 		condition.Reason = carbonv1alpha1.ProviderInitFailed
 		condition.Message = err.Error()
-		meta.SetStatusCondition(&desired.Status.Conditions, *condition)
+		meta.SetStatusCondition(&after.Status.Conditions, *condition)
 
 		logger.Error(err, "unable to get provider", "providerKind", providerRef.Kind)
-		r.updateStatus(ctx, current, desired)
+		r.updateStatus(ctx, before, after)
 
 		return ctrl.Result{}, err
 	}
-
-	region := provider.Region()
-	desired.Status.Region = &region
 
 	condition := carbonv1alpha1.ConditionHealthy.DeepCopy()
 	condition.Status = metav1.ConditionTrue
 	condition.Reason = carbonv1alpha1.ProviderInitFinished
 	condition.Message = fmt.Sprintf("Initialized Provider '%s', (%s)", providerRef.Name, providerRef.Kind)
-	meta.SetStatusCondition(&desired.Status.Conditions, *condition)
+	meta.SetStatusCondition(&after.Status.Conditions, *condition)
 
-	return r.updateStatus(ctx, current, desired)
+	// get carbon intensity
+	carbonIntensity, err := provider.GetCurrent(ctx, before.Spec.Zone)
+	if err != nil {
+		logger.Error(err, "unable to get carbon intensity", "providerKind", providerRef.Kind, "provider", providerRef.Name)
+		return ctrl.Result{}, err
+	}
+
+	// update rest of the status, push metrics
+
+	if carbonIntensity > 0 {
+		carbonIntensityAsString := fmt.Sprintf("%.2f", carbonIntensity)
+		after.Status.CarbonIntensity = &carbonIntensityAsString
+	} else {
+		notAvailable := "-"
+		after.Status.CarbonIntensity = &notAvailable
+	}
+
+	// TODO: change to time.Hours
+	requeueAfter := time.Minute * time.Duration(before.Spec.LiveRefreshIntervalInHours)
+	now := time.Now()
+
+	after.Status.NextUpdate = &metav1.Time{Time: now.Add(requeueAfter)}
+	after.Status.LastUpdate = &metav1.Time{Time: now}
+
+	result, err := r.updateStatus(ctx, before, after)
+	if err != nil {
+		return result, err
+	}
+
+	if carbonIntensity > 0 {
+		metrics.CipLiveCarbonIntensityMetric.WithLabelValues(strings.ToLower(providerRef.Kind), before.Spec.Zone).Set(carbonIntensity)
+	}
+
+	result.RequeueAfter = requeueAfter
+	return result, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

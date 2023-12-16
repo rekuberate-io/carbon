@@ -19,8 +19,8 @@ spec:
     - jsonPath: .spec.providerRef.name
       name: Provider
       type: string
-    - jsonPath: .status.region
-      name: Region
+    - jsonPath: .spec.zone
+      name: Zone
       type: string
     - jsonPath: .spec.forecastRefreshIntervalHours
       name: Forecast INVL(h)
@@ -59,12 +59,6 @@ spec:
             description: CarbonIntensityProviderSpec defines the desired state of
               CarbonIntensityProvider
             properties:
-              emissionsType:
-                default: average
-                enum:
-                - average
-                - marginal
-                type: string
               forecastRefreshIntervalHours:
                 default: 12
                 format: int32
@@ -137,10 +131,12 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              zone:
+                type: string
             required:
-            - emissionsType
             - forecastRefreshIntervalHours
             - liveRefreshIntervalHours
+            - zone
             type: object
           status:
             description: CarbonIntensityProviderStatus defines the observed state
@@ -219,7 +215,6 @@ spec:
                   type: object
                 type: array
               lastForecast:
-                description: Provider        *string      `json:"provider,omitempty"`
                 format: date-time
                 type: string
               lastUpdate:
@@ -227,8 +222,6 @@ spec:
                 type: string
               nextUpdate:
                 format: date-time
-                type: string
-              region:
                 type: string
             type: object
         type: object

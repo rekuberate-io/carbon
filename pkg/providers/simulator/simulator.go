@@ -20,14 +20,12 @@ var (
 
 type Simulator struct {
 	randomize bool
-	region    string
 	max       float64
 	min       float64
 }
 
 func NewProvider(o carbonv1alpha1.Simulator) (*Simulator, error) {
 	randomize := *o.Spec.Randomize
-	region := o.Spec.Region
 
 	if randomize {
 		var result ForecastResult
@@ -39,17 +37,16 @@ func NewProvider(o carbonv1alpha1.Simulator) (*Simulator, error) {
 		mx, mn := getMaxMin(result)
 
 		return &Simulator{
-			region:    region,
 			randomize: randomize,
 			max:       float64(mx),
 			min:       float64(mn),
 		}, nil
 	}
 
-	return &Simulator{region: region, randomize: randomize}, nil
+	return &Simulator{randomize: randomize}, nil
 }
 
-func (p *Simulator) GetCurrent(ctx context.Context) (float64, error) {
+func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error) {
 	if p.randomize {
 		return rand.Float64() * (p.max - p.min), nil
 	}
@@ -64,7 +61,7 @@ func (p *Simulator) GetCurrent(ctx context.Context) (float64, error) {
 	return carbonIntensity, nil
 }
 
-func (p *Simulator) GetForecast(ctx context.Context) (map[time.Time]float64, error) {
+func (p *Simulator) GetForecast(ctx context.Context, zone string) (map[time.Time]float64, error) {
 	var result ForecastResult
 	err := json.Unmarshal([]byte(forecast), &result)
 	if err != nil {
@@ -80,10 +77,6 @@ func (p *Simulator) GetForecast(ctx context.Context) (map[time.Time]float64, err
 	}
 
 	return forecasts, nil
-}
-
-func (p *Simulator) Region() string {
-	return p.region
 }
 
 func getMaxMin(results ForecastResult) (int, int) {

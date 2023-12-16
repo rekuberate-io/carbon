@@ -30,7 +30,6 @@ type WattTimeSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	Username string              `json:"username"`
-	Region   string              `json:"region"`
 	Password *v1.SecretReference `json:"password"`
 }
 

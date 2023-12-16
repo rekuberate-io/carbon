@@ -19,9 +19,6 @@ spec:
     - jsonPath: .spec.randomize
       name: Randomize
       type: string
-    - jsonPath: .spec.region
-      name: Zone
-      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -45,11 +42,6 @@ spec:
               randomize:
                 default: false
                 type: boolean
-              region:
-                default: SIM-1
-                type: string
-            required:
-            - region
             type: object
           status:
             description: SimulatorStatus defines the observed state of Simulator

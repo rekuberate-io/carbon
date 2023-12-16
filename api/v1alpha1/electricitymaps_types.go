@@ -30,7 +30,6 @@ type ElectricityMapsSpec struct {
 	// +kubebuilder:default:=free_tier
 	Subscription            string              `json:"subscription"`
 	CommercialTrialEndpoint *string             `json:"commercialTrialEndpoint,omitempty"`
-	Zone                    string              `json:"zone"`
 	ApiKey                  *v1.SecretReference `json:"apiKey"`
 }
 
@@ -45,7 +44,6 @@ type ElectricityMapsStatus struct {
 
 // ElectricityMaps is the Schema for the electricitymaps API
 // +kubebuilder:printcolumn:name="Subscription",type=string,JSONPath=`.spec.subscription`
-// +kubebuilder:printcolumn:name="Zone",type=string,JSONPath=`.spec.zone`
 type ElectricityMaps struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -19,9 +19,6 @@ spec:
     - jsonPath: .spec.subscription
       name: Subscription
       type: string
-    - jsonPath: .spec.zone
-      name: Zone
-      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -65,12 +62,9 @@ spec:
                 - commercial_trial
                 - free_tier
                 type: string
-              zone:
-                type: string
             required:
             - apiKey
             - subscription
-            - zone
             type: object
           status:
             description: ElectricityMapsStatus defines the observed state of ElectricityMaps

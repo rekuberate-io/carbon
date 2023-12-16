@@ -39,7 +39,6 @@ func GetElectricityMapSubscriptionModels() []SubscriptionType {
 type ElectricityMapsProvider struct {
 	subscription            SubscriptionType
 	apiKey                  string
-	zone                    string
 	baseUrl                 *url.URL
 	subscriptionRelativeUrl *url.URL
 	client                  *http.Client
@@ -133,10 +132,10 @@ func newElectricityMapsFreeTierProvider(apiKey string) (*ElectricityMapsProvider
 	return electricityMaps, nil
 }
 
-func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context) (float64, error) {
+func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context, zone string) (float64, error) {
 	requestUrl := common.ResolveAbsoluteUriReference(p.baseUrl, p.subscriptionRelativeUrl, &url.URL{Path: "/carbon-intensity/latest"})
 	params := url.Values{}
-	params.Add("zone", p.zone)
+	params.Add("zone", zone)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
@@ -176,14 +175,14 @@ func (p *ElectricityMapsProvider) GetCurrent(ctx context.Context) (float64, erro
 	return carbonIntensity, nil
 }
 
-func (p *ElectricityMapsProvider) GetForecast(ctx context.Context) (map[time.Time]float64, error) {
+func (p *ElectricityMapsProvider) GetForecast(ctx context.Context, zone string) (map[time.Time]float64, error) {
 	requestUrl := common.ResolveAbsoluteUriReference(
 		p.baseUrl,
 		p.subscriptionRelativeUrl,
 		&url.URL{Path: "/carbon-intensity/forecast"},
 	)
 	params := url.Values{}
-	params.Add("zone", p.zone)
+	params.Add("zone", zone)
 	requestUrl.RawQuery = params.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl.String(), nil)
@@ -225,10 +224,6 @@ func (p *ElectricityMapsProvider) GetForecast(ctx context.Context) (map[time.Tim
 	}
 
 	return forecasts, nil
-}
-
-func (p *ElectricityMapsProvider) Region() string {
-	return p.zone
 }
 
 func (p *ElectricityMapsProvider) unwrapHttpResponseErrorPayload(response *http.Response) (apiError string, message string, err error) {

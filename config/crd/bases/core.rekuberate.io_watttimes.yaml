@@ -56,13 +56,10 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
-              region:
-                type: string
               username:
                 type: string
             required:
             - password
-            - region
             - username
             type: object
           status:

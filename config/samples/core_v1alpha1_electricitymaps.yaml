@@ -11,6 +11,5 @@ metadata:
 spec:
   subscription: commercial_trial
   commercialTrialEndpoint: /2w97h07rvxvuaa1g
-  zone: DE
   apiKey:
     name: electricitymaps-apikey
