@@ -41,6 +41,10 @@ func NewProvider(ctx context.Context, k client.Client, o carbonv1alpha1.WattTime
 	}
 
 	passwordRef := o.Spec.Password
+	if passwordRef.Namespace == "" {
+		passwordRef.Namespace = o.Namespace
+	}
+
 	objectKey := client.ObjectKey{
 		Namespace: passwordRef.Namespace,
 		Name:      passwordRef.Name,

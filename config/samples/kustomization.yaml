@@ -2,6 +2,7 @@
 resources:
 - core_v1alpha1_carbonintensityissuer-eu-de.yaml
 - core_v1alpha1_carbonintensityissuer-eu-nl.yaml
+- core_v1alpha1_carbonintensityissuer-caiso-north.yaml
 - core_v1alpha1_watttime.yaml
 - core_v1alpha1_simulator.yaml
 - core_v1alpha1_electricitymaps.yaml

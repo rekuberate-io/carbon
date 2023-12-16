@@ -46,6 +46,9 @@ type ElectricityMapsProvider struct {
 
 func NewProvider(ctx context.Context, k client.Client, o carbonv1alpha1.ElectricityMaps) (*ElectricityMapsProvider, error) {
 	apiKeyRef := o.Spec.ApiKeyRef
+	if apiKeyRef.Namespace == "" {
+		apiKeyRef.Namespace = o.Namespace
+	}
 	objectKey := client.ObjectKey{
 		Namespace: apiKeyRef.Namespace,
 		Name:      apiKeyRef.Name,
