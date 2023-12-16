@@ -5,14 +5,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
-  name: carbonintensityproviders.core.rekuberate.io
+  name: carbonintensityissuers.core.rekuberate.io
 spec:
   group: core.rekuberate.io
   names:
-    kind: CarbonIntensityProvider
-    listKind: CarbonIntensityProviderList
-    plural: carbonintensityproviders
-    singular: carbonintensityprovider
+    kind: CarbonIntensityIssuer
+    listKind: CarbonIntensityIssuerList
+    plural: carbonintensityissuers
+    singular: carbonintensityissuer
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -40,7 +40,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: CarbonIntensityProvider is the Schema for the carbonintensityproviders
+        description: CarbonIntensityIssuer is the Schema for the carbonintensityissuers
           API
         properties:
           apiVersion:
@@ -56,8 +56,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CarbonIntensityProviderSpec defines the desired state of
-              CarbonIntensityProvider
+            description: CarbonIntensityIssuerSpec defines the desired state of CarbonIntensityIssuer
             properties:
               forecastRefreshIntervalHours:
                 default: 12
@@ -139,8 +138,8 @@ spec:
             - zone
             type: object
           status:
-            description: CarbonIntensityProviderStatus defines the observed state
-              of CarbonIntensityProvider
+            description: CarbonIntensityIssuerStatus defines the observed state of
+              CarbonIntensityIssuer
             properties:
               carbonIntensity:
                 type: string

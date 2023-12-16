@@ -19,9 +19,6 @@ spec:
     - jsonPath: .spec.username
       name: Username
       type: string
-    - jsonPath: .spec.region
-      name: Region
-      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:

@@ -30,7 +30,7 @@ type ElectricityMapsSpec struct {
 	// +kubebuilder:default:=free_tier
 	Subscription            string              `json:"subscription"`
 	CommercialTrialEndpoint *string             `json:"commercialTrialEndpoint,omitempty"`
-	ApiKey                  *v1.SecretReference `json:"apiKey"`
+	ApiKeyRef               *v1.SecretReference `json:"apiKeyRef"`
 }
 
 // ElectricityMapsStatus defines the observed state of ElectricityMaps

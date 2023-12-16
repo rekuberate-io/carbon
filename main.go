@@ -91,12 +91,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.CarbonIntensityProviderReconciler{
+	if err = (&controllers.CarbonIntensityIssuerReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("carbon-intensity-controller"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "CarbonIntensityProvider")
+		setupLog.Error(err, "unable to create controller", "controller", "CarbonIntensityIssuer")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

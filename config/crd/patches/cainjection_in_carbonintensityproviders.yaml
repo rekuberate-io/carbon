@@ -4,4 +4,4 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
-  name: carbonintensityproviders.core.rekuberate.io
+  name: carbonintensityissuers.core.rekuberate.io
