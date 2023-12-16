@@ -139,11 +139,24 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 	condition.Message = fmt.Sprintf("Initialized Provider '%s', (%s)", providerRef.Name, providerRef.Kind)
 	meta.SetStatusCondition(&after.Status.Conditions, *condition)
 
-	// get carbon intensity
+	// get current carbon intensity
 	carbonIntensity, err := provider.GetCurrent(ctx, before.Spec.Zone)
 	if err != nil {
 		logger.Error(err, "unable to get carbon intensity", "providerKind", providerRef.Kind, "provider", providerRef.Name)
 		return ctrl.Result{}, err
+	}
+
+	// get carbon intensity forecast
+
+	// TODO: change to time.Hours
+	if before.Status.LastForecast.Add(time.Duration(before.Spec.ForecastRefreshIntervalInHours) * time.Minute).Before(time.Now()) {
+		_, err = provider.GetForecast(ctx, before.Spec.Zone)
+		if err != nil {
+			logger.Error(err, "unable to get carbon intensity forecast", "providerKind", providerRef.Kind, "provider", providerRef.Name)
+			return ctrl.Result{}, err
+		}
+
+		after.Status.LastForecast = &metav1.Time{Time: time.Now()}
 	}
 
 	// update rest of the status, push metrics

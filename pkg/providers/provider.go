@@ -15,14 +15,16 @@ import (
 	"time"
 )
 
+type ProviderType string
+
 const (
-	WattTime        string = "watttime"
-	ElectricityMaps string = "electricitymaps"
-	Simulator       string = "simulator"
+	WattTime        ProviderType = "watttime"
+	ElectricityMaps ProviderType = "electricitymaps"
+	Simulator       ProviderType = "simulator"
 )
 
 var (
-	supportedProviders     = []string{WattTime, ElectricityMaps, Simulator}
+	supportedProviders     = []ProviderType{WattTime, ElectricityMaps, Simulator}
 	supportedEmissionTypes = []EmissionsType{Average, Marginal}
 )
 
@@ -62,7 +64,7 @@ func GetProvider(
 	objectKey := client.ObjectKey{Name: providerRef.Name, Namespace: providerRefNamespace}
 
 	switch providerRefKind {
-	case Simulator:
+	case string(Simulator):
 		po := &carbonv1alpha1.Simulator{}
 		if err := kClient.Get(ctx, objectKey, po); err != nil {
 			return nil, err
@@ -74,7 +76,7 @@ func GetProvider(
 		}
 
 		return Provider(p), nil
-	case WattTime:
+	case string(WattTime):
 		po := &carbonv1alpha1.WattTime{}
 		if err := kClient.Get(ctx, objectKey, po); err != nil {
 			return nil, err
@@ -86,7 +88,7 @@ func GetProvider(
 		}
 
 		return Provider(p), nil
-	case ElectricityMaps:
+	case string(ElectricityMaps):
 		po := &carbonv1alpha1.ElectricityMaps{}
 		if err := kClient.Get(ctx, objectKey, po); err != nil {
 			return nil, err
@@ -103,12 +105,12 @@ func GetProvider(
 	return nil, nil
 }
 
-func GetSupportedProviders() []string {
+func GetSupportedProviders() []ProviderType {
 	return supportedProviders
 }
 
 func IsSupported(providerType string) bool {
-	if !slices.Contains(supportedProviders, strings.ToLower(providerType)) {
+	if !slices.Contains(supportedProviders, ProviderType(strings.ToLower(providerType))) {
 		return false
 	}
 

@@ -48,6 +48,7 @@ type CarbonIntensityProviderSpec struct {
 	// +kubebuilder:validation:Required
 	Zone string `json:"zone"`
 
+	// +kubebuilder:validation:Required
 	ProviderRef *v1.ObjectReference `json:"providerRef,omitempty"`
 }
 
