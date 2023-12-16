@@ -46,9 +46,9 @@ import (
 )
 
 const (
-	labelProviderInstance = "core.rekuberate.io/carbon-provider-instance"
-	labelProviderType     = "core.rekuberate.io/carbon-provider-type"
-	labelProviderZone     = "core.rekuberate.io/carbon-provider-zone"
+	labelProviderInstance = "core.rekuberate.io/carbon-issuer-instance"
+	labelProviderType     = "core.rekuberate.io/carbon-issuer-type"
+	labelProviderZone     = "core.rekuberate.io/carbon-issuer-zone"
 )
 
 var (
@@ -70,16 +70,16 @@ var (
 	dbglvl int = 5
 )
 
-// CarbonIntensityProviderReconciler reconciles a CarbonIntensityProvider object
-type CarbonIntensityProviderReconciler struct {
+// CarbonIntensityIssuerReconciler reconciles a CarbonIntensityIssuer object
+type CarbonIntensityIssuerReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 }
 
-//+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityproviders,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityproviders/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityproviders/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityissuers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityissuers/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityissuers/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core.rekuberate.io,resources=electricitymaps,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core.rekuberate.io,resources=watttimes,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core.rekuberate.io,resources=simulators,verbs=get;list;watch
@@ -91,11 +91,11 @@ type CarbonIntensityProviderReconciler struct {
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
-func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger = log.FromContext(ctx).WithName("carbon-controller")
 
 	// get carbon intensity provider resource
-	before := &carbonv1alpha1.CarbonIntensityProvider{}
+	before := &carbonv1alpha1.CarbonIntensityIssuer{}
 	if err := r.Get(ctx, req.NamespacedName, before); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -193,16 +193,16 @@ func (r *CarbonIntensityProviderReconciler) Reconcile(ctx context.Context, req c
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CarbonIntensityProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *CarbonIntensityIssuerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&carbonv1alpha1.CarbonIntensityProvider{}, eventFilters).
+		For(&carbonv1alpha1.CarbonIntensityIssuer{}, eventFilters).
 		Complete(r)
 }
 
-func (r *CarbonIntensityProviderReconciler) updateStatus(
+func (r *CarbonIntensityIssuerReconciler) updateStatus(
 	ctx context.Context,
-	current *carbonv1alpha1.CarbonIntensityProvider,
-	desired *carbonv1alpha1.CarbonIntensityProvider,
+	current *carbonv1alpha1.CarbonIntensityIssuer,
+	desired *carbonv1alpha1.CarbonIntensityIssuer,
 ) (ctrl.Result, error) {
 	if !reflect.DeepEqual(current, desired) {
 		err := r.Status().Update(ctx, desired)
@@ -215,7 +215,7 @@ func (r *CarbonIntensityProviderReconciler) updateStatus(
 	return ctrl.Result{}, nil
 }
 
-func (r *CarbonIntensityProviderReconciler) prepareConfigMap(
+func (r *CarbonIntensityIssuerReconciler) prepareConfigMap(
 	req ctrl.Request,
 	forecast map[time.Time]float64,
 	zone string,
@@ -244,7 +244,7 @@ func (r *CarbonIntensityProviderReconciler) prepareConfigMap(
 	configMapName := fmt.Sprintf("%s-forecast", req.Name)
 
 	labels := map[string]string{
-		"app.kubernetes.io/name":       "carbonintensityprovider",
+		"app.kubernetes.io/name":       "carbonintensityissuer",
 		"app.kubernetes.io/instance":   configMapName,
 		"app.kubernetes.io/component":  "forecast",
 		"app.kubernetes.io/part-of":    "carbon",

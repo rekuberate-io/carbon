@@ -39,7 +39,7 @@ spec:
           spec:
             description: ElectricityMapsSpec defines the desired state of ElectricityMaps
             properties:
-              apiKey:
+              apiKeyRef:
                 description: SecretReference represents a Secret Reference. It has
                   enough information to retrieve secret in any namespace
                 properties:
@@ -63,7 +63,7 @@ spec:
                 - free_tier
                 type: string
             required:
-            - apiKey
+            - apiKeyRef
             - subscription
             type: object
           status:

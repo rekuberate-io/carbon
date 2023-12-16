@@ -1,13 +1,13 @@
 apiVersion: core.rekuberate.io/v1alpha1
-kind: CarbonIntensityProvider
+kind: CarbonIntensityIssuer
 metadata:
   labels:
-    app.kubernetes.io/name: carbonintensityprovider
-    app.kubernetes.io/instance: carbonintensityprovider-eu-nl
+    app.kubernetes.io/name: carbonintensityissuer
+    app.kubernetes.io/instance: carbonintensityissuer-eu-nl
     app.kubernetes.io/part-of: carbon
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: carbon
-  name: carbonintensityprovider-eu-nl
+  name: carbonintensityissuer-eu-nl
 spec:
   forecastRefreshIntervalHours: 12
   liveRefreshIntervalHours: 1

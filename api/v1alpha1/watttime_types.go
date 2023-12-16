@@ -44,7 +44,6 @@ type WattTimeStatus struct {
 
 // WattTime is the Schema for the watttimes API
 // +kubebuilder:printcolumn:name="Username",type=string,JSONPath=`.spec.username`
-// +kubebuilder:printcolumn:name="Region",type=string,JSONPath=`.spec.region`
 type WattTime struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

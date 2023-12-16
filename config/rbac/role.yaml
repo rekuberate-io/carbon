@@ -35,7 +35,7 @@ rules:
 - apiGroups:
   - core.rekuberate.io
   resources:
-  - carbonintensityproviders
+  - carbonintensityissuers
   verbs:
   - create
   - delete
@@ -47,13 +47,13 @@ rules:
 - apiGroups:
   - core.rekuberate.io
   resources:
-  - carbonintensityproviders/finalizers
+  - carbonintensityissuers/finalizers
   verbs:
   - update
 - apiGroups:
   - core.rekuberate.io
   resources:
-  - carbonintensityproviders/status
+  - carbonintensityissuers/status
   verbs:
   - get
   - patch

@@ -1,27 +1,31 @@
-# permissions for end users to view carbonintensityproviders.
+# permissions for end users to edit carbonintensityissuers.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: carbonintensityprovider-viewer-role
+    app.kubernetes.io/instance: carbonintensityissuer-editor-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: carbon
     app.kubernetes.io/part-of: carbon
     app.kubernetes.io/managed-by: kustomize
-  name: carbonintensityprovider-viewer-role
+  name: carbonintensityissuer-editor-role
 rules:
 - apiGroups:
   - core.rekuberate.io
   resources:
-  - carbonintensityproviders
+  - carbonintensityissuers
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - core.rekuberate.io
   resources:
-  - carbonintensityproviders/status
+  - carbonintensityissuers/status
   verbs:
   - get
