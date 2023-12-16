@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -122,6 +121,10 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 
 	// get a concrete provider
 	providerRef := before.Spec.ProviderRef
+	if providerRef.Namespace == "" {
+		providerRef.Namespace = req.Namespace
+	}
+
 	provider, err := providers.GetProvider(ctx, req, r.Client, providerRef)
 	if err != nil {
 		condition := carbonv1alpha1.ConditionHealthy.DeepCopy()
@@ -185,7 +188,11 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	if carbonIntensity > 0 {
-		metrics.CipLiveCarbonIntensityMetric.WithLabelValues(strings.ToLower(providerRef.Kind), before.Spec.Zone).Set(carbonIntensity)
+		metrics.CipLiveCarbonIntensityMetric.WithLabelValues(
+			providerRef.Kind,
+			req.String(),
+			before.Spec.Zone,
+		).Set(carbonIntensity)
 	}
 
 	result.RequeueAfter = requeueAfter

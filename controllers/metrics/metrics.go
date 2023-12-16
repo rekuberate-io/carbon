@@ -27,7 +27,7 @@ var (
 			Name: "rekuberate_carbon_intensity_provider_live_gramsperkilowatthour",
 			Help: "Carbon Intensity (grCO2eq/KWh)",
 		},
-		[]string{"provider", "zone"},
+		[]string{"provider", "issuer", "zone"},
 	)
 )
 
