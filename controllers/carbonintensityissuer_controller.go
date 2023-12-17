@@ -219,8 +219,8 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 	if len(forecast) > 0 {
 		err = r.pushValues(
 			ctx,
-			"carbonIntensity_forecast",
-			req.String(),
+			"carbonIntensity",
+			req.String()+"_forecast",
 			tags,
 			forecast,
 		)

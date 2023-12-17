@@ -98,6 +98,8 @@ func main() {
 	influxDb2Token := os.Getenv("INFLUXDB2_TOKEN")
 	influxDb2Url := os.Getenv("INFLUXDB2_URL_LOCAL")
 	influxDb2Client := influxdb2.NewClient(influxDb2Url, influxDb2Token)
+	defer influxDb2Client.Close()
+
 	if strings.TrimSpace(influxDb2Token) == "" || strings.TrimSpace(influxDb2Url) == "" {
 		err := fmt.Errorf("influxdb2 token or url is missing")
 		setupLog.Error(err, "unable to set up influxdb2 client")
