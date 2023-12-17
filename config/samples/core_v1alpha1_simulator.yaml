@@ -11,3 +11,4 @@ metadata:
 spec:
   bootstrap: true
   replacement: true
+  stableSample: true

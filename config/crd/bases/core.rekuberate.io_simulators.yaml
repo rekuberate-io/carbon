@@ -22,6 +22,9 @@ spec:
     - jsonPath: .spec.replacement
       name: Replacement
       type: string
+    - jsonPath: .spec.stableSample
+      name: Stable Sample
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -47,6 +50,9 @@ spec:
                 type: boolean
               replacement:
                 default: false
+                type: boolean
+              stableSample:
+                default: true
                 type: boolean
             type: object
           status:

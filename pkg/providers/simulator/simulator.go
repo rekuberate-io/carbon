@@ -19,17 +19,22 @@ var (
 )
 
 type Simulator struct {
-	bootstrap   bool
-	replacement bool
+	bootstrap    bool
+	replacement  bool
+	stableSample bool
 }
 
 func NewProvider(o carbonv1alpha1.Simulator) (*Simulator, error) {
-	return &Simulator{bootstrap: *o.Spec.Bootstrap, replacement: *o.Spec.Replacement}, nil
+	return &Simulator{
+		bootstrap:    *o.Spec.Bootstrap,
+		replacement:  *o.Spec.Replacement,
+		stableSample: *o.Spec.StableSample,
+	}, nil
 }
 
 func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error) {
 	if p.bootstrap {
-		sample, err := p.getSample(1, p.replacement)
+		sample, err := p.getSample(1, p.replacement, p.stableSample)
 		if err != nil {
 			return common.NoValue, err
 		}
@@ -50,10 +55,10 @@ func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error
 }
 
 func (p *Simulator) GetForecast(ctx context.Context, zone string) (map[time.Time]float64, error) {
-	return p.getSample(24, p.replacement)
+	return p.getSample(24, p.replacement, p.stableSample)
 }
 
-func (p *Simulator) getSample(takenum int, replacement bool) (map[time.Time]float64, error) {
+func (p *Simulator) getSample(takenum int, replacement bool, stableSample bool) (map[time.Time]float64, error) {
 	var result ForecastResult
 	err := json.Unmarshal([]byte(forecast), &result)
 	if err != nil {
@@ -69,9 +74,18 @@ func (p *Simulator) getSample(takenum int, replacement bool) (map[time.Time]floa
 	}
 
 	input := stats.Float64Data(fd)
-	output, err := stats.Sample(input, takenum, replacement)
-	if err != nil {
-		return nil, err
+	output := []float64{}
+
+	if stableSample {
+		output, err = stats.StableSample(input, takenum)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		output, err = stats.Sample(input, takenum, replacement)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, point := range output {

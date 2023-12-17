@@ -32,6 +32,10 @@ type SimulatorSpec struct {
 	// +kubebuilder:default:=false
 	// +kubebuilder:validation:Type=boolean
 	Replacement *bool `json:"replacement,omitempty"`
+
+	// +kubebuilder:default:=true
+	// +kubebuilder:validation:Type=boolean
+	StableSample *bool `json:"stableSample,omitempty"`
 }
 
 // SimulatorStatus defines the observed state of Simulator
@@ -46,6 +50,7 @@ type SimulatorStatus struct {
 // Simulator is the Schema for the simulators API
 // +kubebuilder:printcolumn:name="Bootstrap",type=string,JSONPath=`.spec.bootstrap`
 // +kubebuilder:printcolumn:name="Replacement",type=string,JSONPath=`.spec.replacement`
+// +kubebuilder:printcolumn:name="Stable Sample",type=string,JSONPath=`.spec.stableSample`
 type Simulator struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
