@@ -228,7 +228,7 @@ func (r *CarbonIntensityIssuerReconciler) prepareConfigMap(
 	forecast map[time.Time]float64,
 	zone string,
 	pointTime time.Time,
-	providerType string,
+	providerType providers.ProviderType,
 	immutable bool,
 ) (*corev1.ConfigMap, error) {
 
