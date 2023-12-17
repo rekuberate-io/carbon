@@ -220,7 +220,7 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 		err = r.pushValues(
 			ctx,
 			"carbonIntensity",
-			req.String()+"_forecast",
+			fmt.Sprintf("%s_%s", req.String(), "forecast"),
 			tags,
 			forecast,
 		)
