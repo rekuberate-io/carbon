@@ -27,7 +27,11 @@ import (
 type SimulatorSpec struct {
 	// +kubebuilder:default:=false
 	// +kubebuilder:validation:Type=boolean
-	Randomize *bool `json:"randomize,omitempty"`
+	Bootstrap *bool `json:"bootstrap,omitempty"`
+
+	// +kubebuilder:default:=false
+	// +kubebuilder:validation:Type=boolean
+	Replacement *bool `json:"replacement,omitempty"`
 }
 
 // SimulatorStatus defines the observed state of Simulator
@@ -40,7 +44,8 @@ type SimulatorStatus struct {
 //+kubebuilder:subresource:status
 
 // Simulator is the Schema for the simulators API
-// +kubebuilder:printcolumn:name="Randomize",type=string,JSONPath=`.spec.randomize`
+// +kubebuilder:printcolumn:name="Bootstrap",type=string,JSONPath=`.spec.bootstrap`
+// +kubebuilder:printcolumn:name="Replacement",type=string,JSONPath=`.spec.replacement`
 type Simulator struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

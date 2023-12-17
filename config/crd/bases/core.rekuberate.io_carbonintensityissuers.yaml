@@ -29,7 +29,7 @@ spec:
       name: Last Forecast
       type: string
     - jsonPath: .status.carbonIntensity
-      name: CI (gCO2eq/KWh)
+      name: CI (grCO2eq/KWh)
       type: string
     - jsonPath: .status.lastUpdate
       name: Last Update

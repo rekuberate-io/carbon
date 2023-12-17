@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
+	"os"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -200,6 +201,7 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 	//}
 
 	tags := map[string]string{
+		"_type":        "live",
 		"providerKind": providerRef.Kind,
 		"provider":     providerRef.Name,
 		"zone":         before.Spec.Zone,
@@ -213,20 +215,26 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 		map[time.Time]float64{time.Now(): carbonIntensity},
 	)
 	if err != nil {
-		logger.Error(err, "unable to push value to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name)
+		logger.Error(err, "unable to push ci measurement to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
 	}
 
+	logger.Info("pushed ci measurement to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
+
 	if len(forecast) > 0 {
+		tags["_type"] = "forecast"
+
 		err = r.pushValues(
 			ctx,
 			"carbonIntensity",
-			fmt.Sprintf("%s_%s", req.String(), "forecast"),
+			req.String(),
 			tags,
 			forecast,
 		)
 		if err != nil {
-			logger.Error(err, "unable to push forecasts to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name)
+			logger.Error(err, "unable to push forecasts to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
 		}
+
+		logger.Info("pushed ci forecast to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
 	}
 
 	result.RequeueAfter = requeueAfter
@@ -263,8 +271,8 @@ func (r *CarbonIntensityIssuerReconciler) pushValues(
 	tags map[string]string,
 	series map[time.Time]float64,
 ) error {
-	org := "influxdata"
-	bucket := "carbon"
+	org := os.Getenv("INFLUXDB2_ORG")
+	bucket := os.Getenv("INFLUXDB2_BUCKET")
 	writeClient := r.InfluxDb2Client.WriteAPIBlocking(org, bucket)
 
 	points := []*write.Point{}

@@ -16,8 +16,11 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.randomize
-      name: Randomize
+    - jsonPath: .spec.bootstrap
+      name: Bootstrap
+      type: string
+    - jsonPath: .spec.replacement
+      name: Replacement
       type: string
     name: v1alpha1
     schema:
@@ -39,7 +42,10 @@ spec:
           spec:
             description: SimulatorSpec defines the desired state of Simulator
             properties:
-              randomize:
+              bootstrap:
+                default: false
+                type: boolean
+              replacement:
                 default: false
                 type: boolean
             type: object

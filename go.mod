@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/go-logr/logr v1.2.3
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
+	github.com/montanaflynn/stats v0.7.1
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	github.com/prometheus/client_golang v1.14.0

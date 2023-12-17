@@ -4,9 +4,9 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"github.com/montanaflynn/stats"
 	carbonv1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
 	"github.com/rekuberate-io/carbon/pkg/common"
-	"math/rand"
 	"time"
 )
 
@@ -19,36 +19,24 @@ var (
 )
 
 type Simulator struct {
-	randomize bool
-	max       float64
-	min       float64
+	bootstrap   bool
+	replacement bool
 }
 
 func NewProvider(o carbonv1alpha1.Simulator) (*Simulator, error) {
-	randomize := *o.Spec.Randomize
-
-	if randomize {
-		var result ForecastResult
-		err := json.Unmarshal([]byte(forecast), &result)
-		if err != nil {
-			return nil, err
-		}
-
-		mx, mn := getMaxMin(result)
-
-		return &Simulator{
-			randomize: randomize,
-			max:       float64(mx),
-			min:       float64(mn),
-		}, nil
-	}
-
-	return &Simulator{randomize: randomize}, nil
+	return &Simulator{bootstrap: *o.Spec.Bootstrap, replacement: *o.Spec.Replacement}, nil
 }
 
 func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error) {
-	if p.randomize {
-		return rand.Float64() * (p.max - p.min), nil
+	if p.bootstrap {
+		sample, err := p.getSample(1, p.replacement)
+		if err != nil {
+			return common.NoValue, err
+		}
+
+		for _, point := range sample {
+			return point, nil
+		}
 	}
 
 	var result LiveResult
@@ -62,6 +50,10 @@ func (p *Simulator) GetCurrent(ctx context.Context, zone string) (float64, error
 }
 
 func (p *Simulator) GetForecast(ctx context.Context, zone string) (map[time.Time]float64, error) {
+	return p.getSample(24, p.replacement)
+}
+
+func (p *Simulator) getSample(takenum int, replacement bool) (map[time.Time]float64, error) {
 	var result ForecastResult
 	err := json.Unmarshal([]byte(forecast), &result)
 	if err != nil {
@@ -71,26 +63,21 @@ func (p *Simulator) GetForecast(ctx context.Context, zone string) (map[time.Time
 	forecasts := make(map[time.Time]float64)
 	pointTime := time.Now()
 
-	for range result.Forecast {
+	fd := []float64{}
+	for _, f := range result.Forecast {
+		fd = append(fd, float64(f.CarbonIntensity))
+	}
+
+	input := stats.Float64Data(fd)
+	output, err := stats.Sample(input, takenum, replacement)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, point := range output {
+		forecasts[pointTime] = point
 		pointTime = pointTime.Add(1 * time.Hour)
-		forecasts[pointTime] = rand.Float64() * (p.max - p.min)
 	}
 
 	return forecasts, nil
-}
-
-func getMaxMin(results ForecastResult) (int, int) {
-	var mx int = results.Forecast[0].CarbonIntensity
-	var mn int = results.Forecast[0].CarbonIntensity
-
-	for _, value := range results.Forecast {
-		if mx < value.CarbonIntensity {
-			mx = value.CarbonIntensity
-		}
-		if mn > value.CarbonIntensity {
-			mn = value.CarbonIntensity
-		}
-	}
-
-	return mx, mn
 }
