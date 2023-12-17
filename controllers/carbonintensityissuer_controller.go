@@ -265,7 +265,7 @@ func (r *CarbonIntensityIssuerReconciler) pushValues(
 ) error {
 	org := "influxdata"
 	bucket := "carbon"
-	writeAPI := r.InfluxDb2Client.WriteAPIBlocking(org, bucket)
+	writeClient := r.InfluxDb2Client.WriteAPIBlocking(org, bucket)
 
 	points := []*write.Point{}
 	if len(series) > 0 {
@@ -277,9 +277,14 @@ func (r *CarbonIntensityIssuerReconciler) pushValues(
 			points = append(points, point)
 		}
 
-		if err := writeAPI.WritePoint(ctx, points...); err != nil {
+		if err := writeClient.WritePoint(ctx, points...); err != nil {
 			return err
 		}
+	}
+
+	err := writeClient.Flush(ctx)
+	if err != nil {
+		return err
 	}
 
 	return nil

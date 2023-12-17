@@ -97,7 +97,8 @@ func main() {
 	//Create an InfluxDb2 Client
 	influxDb2Token := os.Getenv("INFLUXDB2_TOKEN")
 	influxDb2Url := os.Getenv("INFLUXDB2_URL_LOCAL")
-	influxDb2Client := influxdb2.NewClient(influxDb2Url, influxDb2Token)
+	influxDb2Client := influxdb2.NewClientWithOptions(influxDb2Url, influxDb2Token,
+		influxdb2.DefaultOptions().SetBatchSize(24))
 	defer influxDb2Client.Close()
 
 	if strings.TrimSpace(influxDb2Token) == "" || strings.TrimSpace(influxDb2Url) == "" {
