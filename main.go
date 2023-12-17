@@ -18,8 +18,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"go.uber.org/zap/zapcore"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -91,10 +94,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	//Create an InfluxDb2 Client
+	influxDb2Token := os.Getenv("INFLUXDB2_TOKEN")
+	influxDb2Url := os.Getenv("INFLUXDB2_URL_LOCAL")
+	influxDb2Client := influxdb2.NewClient(influxDb2Url, influxDb2Token)
+	if strings.TrimSpace(influxDb2Token) == "" || strings.TrimSpace(influxDb2Url) == "" {
+		err := fmt.Errorf("influxdb2 token or url is missing")
+		setupLog.Error(err, "unable to set up influxdb2 client")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.CarbonIntensityIssuerReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("carbon-intensity-controller"),
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Recorder:        mgr.GetEventRecorderFor("carbon-intensity-controller"),
+		InfluxDb2Client: influxDb2Client,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CarbonIntensityIssuer")
 		os.Exit(1)

@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-logr/logr"
-	"github.com/rekuberate-io/carbon/controllers/metrics"
+	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"github.com/rekuberate-io/carbon/pkg/providers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	carbonv1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
 )
 
@@ -72,8 +73,9 @@ var (
 // CarbonIntensityIssuerReconciler reconciles a CarbonIntensityIssuer object
 type CarbonIntensityIssuerReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Scheme          *runtime.Scheme
+	Recorder        record.EventRecorder
+	InfluxDb2Client influxdb2.Client
 }
 
 //+kubebuilder:rbac:groups=core.rekuberate.io,resources=carbonintensityissuers,verbs=get;list;watch;create;update;patch;delete
@@ -154,12 +156,13 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 
 	// get carbon intensity forecast
 	// TODO: change to time.Hours
+	forecast := make(map[time.Time]float64)
 	if before.Status.LastForecast == nil ||
 		before.Status.LastForecast.Add(time.Duration(before.Spec.ForecastRefreshIntervalInHours)*time.Minute).Before(time.Now()) {
-		_, err = provider.GetForecast(ctx, before.Spec.Zone)
+		forecast, err = provider.GetForecast(ctx, before.Spec.Zone)
 		if err != nil {
 			logger.Error(err, "unable to get carbon intensity forecast", "providerKind", providerRef.Kind, "provider", providerRef.Name)
-			return ctrl.Result{}, err
+			//return ctrl.Result{}, err
 		}
 
 		after.Status.LastForecast = &metav1.Time{Time: time.Now()}
@@ -188,12 +191,42 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// TODO: set N/A value as well in metric
-	if carbonIntensity > 0 {
-		metrics.CipLiveCarbonIntensityMetric.WithLabelValues(
-			providerRef.Kind,
+	//if carbonIntensity > 0 {
+	//	metrics.CipLiveCarbonIntensityMetric.WithLabelValues(
+	//		providerRef.Kind,
+	//		req.String(),
+	//		before.Spec.Zone,
+	//	).Set(carbonIntensity)
+	//}
+
+	tags := map[string]string{
+		"providerKind": providerRef.Kind,
+		"provider":     providerRef.Name,
+		"zone":         before.Spec.Zone,
+	}
+
+	err = r.pushValues(
+		ctx,
+		"carbonIntensity",
+		req.String(),
+		tags,
+		map[time.Time]float64{time.Now(): carbonIntensity},
+	)
+	if err != nil {
+		logger.Error(err, "unable to push value to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name)
+	}
+
+	if len(forecast) > 0 {
+		err = r.pushValues(
+			ctx,
+			"carbonIntensity_forecast",
 			req.String(),
-			before.Spec.Zone,
-		).Set(carbonIntensity)
+			tags,
+			forecast,
+		)
+		if err != nil {
+			logger.Error(err, "unable to push forecasts to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name)
+		}
 	}
 
 	result.RequeueAfter = requeueAfter
@@ -221,6 +254,35 @@ func (r *CarbonIntensityIssuerReconciler) updateStatus(
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *CarbonIntensityIssuerReconciler) pushValues(
+	ctx context.Context,
+	fieldName string,
+	measurement string,
+	tags map[string]string,
+	series map[time.Time]float64,
+) error {
+	org := "influxdata"
+	bucket := "carbon"
+	writeAPI := r.InfluxDb2Client.WriteAPIBlocking(org, bucket)
+
+	points := []*write.Point{}
+	if len(series) > 0 {
+		for pointInTime, carbonIntensity := range series {
+			fields := map[string]interface{}{
+				fieldName: carbonIntensity,
+			}
+			point := write.NewPoint(measurement, tags, fields, pointInTime)
+			points = append(points, point)
+		}
+
+		if err := writeAPI.WritePoint(ctx, points...); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *CarbonIntensityIssuerReconciler) prepareConfigMap(
