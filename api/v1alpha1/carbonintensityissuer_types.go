@@ -75,7 +75,7 @@ type CarbonIntensityIssuerStatus struct {
 // +kubebuilder:printcolumn:name="Zone",type=string,JSONPath=`.spec.zone`
 // +kubebuilder:printcolumn:name="Forecast INVL(h)",type=string,JSONPath=`.spec.forecastRefreshIntervalHours`
 // +kubebuilder:printcolumn:name="Last Forecast",type=string,JSONPath=`.status.lastForecast`
-// +kubebuilder:printcolumn:name="CI (grCO2eq/KWh)",type=string,JSONPath=`.status.carbonIntensity`
+// +kubebuilder:printcolumn:name="CI (gCO2eq/KWh)",type=string,JSONPath=`.status.carbonIntensity`
 // +kubebuilder:printcolumn:name="Last Update",type=string,JSONPath=`.status.lastUpdate`
 // +kubebuilder:printcolumn:name="Next Update",type=string,JSONPath=`.status.nextUpdate`
 type CarbonIntensityIssuer struct {
