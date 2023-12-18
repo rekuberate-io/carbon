@@ -17,15 +17,10 @@ limitations under the License.
 package controllers
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
-	"encoding/json"
 	"fmt"
 	"github.com/go-logr/logr"
-	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"github.com/rekuberate-io/carbon/pkg/providers"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -44,6 +39,7 @@ import (
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	carbonv1alpha1 "github.com/rekuberate-io/carbon/api/v1alpha1"
+	carboninfluxdb "github.com/rekuberate-io/carbon/pkg/influxdb"
 )
 
 const (
@@ -116,7 +112,7 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 			meta.SetStatusCondition(&after.Status.Conditions, condition)
 		}
 
-		res, err := r.updateStatus(ctx, before, after)
+		res, err := r.UpdateStatus(ctx, before, after)
 		if err != nil {
 			return res, err
 		}
@@ -137,11 +133,12 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 		meta.SetStatusCondition(&after.Status.Conditions, *condition)
 
 		logger.Error(err, "unable to get provider", "providerKind", providerRef.Kind)
-		r.updateStatus(ctx, before, after)
+		r.UpdateStatus(ctx, before, after)
 
 		return ctrl.Result{}, err
 	}
 
+	// set the condition healthy as true because we initialized the concrete provider
 	condition := carbonv1alpha1.ConditionHealthy.DeepCopy()
 	condition.Status = metav1.ConditionTrue
 	condition.Reason = carbonv1alpha1.ProviderInitFinished
@@ -169,8 +166,7 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 		after.Status.LastForecast = &metav1.Time{Time: time.Now()}
 	}
 
-	// update rest of the status, push metrics
-
+	// update status of custom resource, push carbon intensity measurements to influxdb
 	if carbonIntensity > 0 {
 		carbonIntensityAsString := fmt.Sprintf("%.2f", carbonIntensity)
 		after.Status.CarbonIntensity = &carbonIntensityAsString
@@ -186,7 +182,7 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 	after.Status.NextUpdate = &metav1.Time{Time: now.Add(requeueAfter)}
 	after.Status.LastUpdate = &metav1.Time{Time: now}
 
-	result, err := r.updateStatus(ctx, before, after)
+	result, err := r.UpdateStatus(ctx, before, after)
 	if err != nil {
 		return result, err
 	}
@@ -200,40 +196,48 @@ func (r *CarbonIntensityIssuerReconciler) Reconcile(ctx context.Context, req ctr
 	//	).Set(carbonIntensity)
 	//}
 
+	orgName := os.Getenv("INFLUXDB2_ORG")
+	bucketName := os.Getenv("INFLUXDB2_BUCKET")
+	err = carboninfluxdb.InitDb(ctx, &r.InfluxDb2Client, orgName, bucketName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	tags := map[string]string{
-		"_type":        "live",
 		"providerKind": providerRef.Kind,
 		"provider":     providerRef.Name,
 		"zone":         before.Spec.Zone,
 	}
 
-	err = r.pushValues(
+	err = carboninfluxdb.PushMeasurements(
 		ctx,
+		&r.InfluxDb2Client,
+		orgName,
+		bucketName,
 		"carbonIntensity",
 		req.String(),
 		tags,
 		map[time.Time]float64{time.Now(): carbonIntensity},
 	)
 	if err != nil {
-		logger.Error(err, "unable to push ci measurement to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
+		logger.Error(err, "unable to push ci measurement to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", bucketName)
 	}
-
 	logger.Info("pushed ci measurement to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
 
 	if len(forecast) > 0 {
-		tags["_type"] = "forecast"
-
-		err = r.pushValues(
+		err = carboninfluxdb.PushMeasurements(
 			ctx,
+			&r.InfluxDb2Client,
+			orgName,
+			bucketName,
 			"carbonIntensity",
-			req.String(),
+			fmt.Sprintf("%s_%s", req.String(), "forecast"),
 			tags,
 			forecast,
 		)
 		if err != nil {
 			logger.Error(err, "unable to push forecasts to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
 		}
-
 		logger.Info("pushed ci forecast to influxdb", "providerKind", providerRef.Kind, "provider", providerRef.Name, "bucket", os.Getenv("INFLUXDB2_BUCKET"))
 	}
 
@@ -248,7 +252,7 @@ func (r *CarbonIntensityIssuerReconciler) SetupWithManager(mgr ctrl.Manager) err
 		Complete(r)
 }
 
-func (r *CarbonIntensityIssuerReconciler) updateStatus(
+func (r *CarbonIntensityIssuerReconciler) UpdateStatus(
 	ctx context.Context,
 	current *carbonv1alpha1.CarbonIntensityIssuer,
 	desired *carbonv1alpha1.CarbonIntensityIssuer,
@@ -262,94 +266,4 @@ func (r *CarbonIntensityIssuerReconciler) updateStatus(
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r *CarbonIntensityIssuerReconciler) pushValues(
-	ctx context.Context,
-	fieldName string,
-	measurement string,
-	tags map[string]string,
-	series map[time.Time]float64,
-) error {
-	org := os.Getenv("INFLUXDB2_ORG")
-	bucket := os.Getenv("INFLUXDB2_BUCKET")
-	writeClient := r.InfluxDb2Client.WriteAPIBlocking(org, bucket)
-
-	points := []*write.Point{}
-	if len(series) > 0 {
-		for pointInTime, carbonIntensity := range series {
-			fields := map[string]interface{}{
-				fieldName: carbonIntensity,
-			}
-			point := write.NewPoint(measurement, tags, fields, pointInTime)
-			points = append(points, point)
-		}
-
-		if err := writeClient.WritePoint(ctx, points...); err != nil {
-			return err
-		}
-	}
-
-	err := writeClient.Flush(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *CarbonIntensityIssuerReconciler) prepareConfigMap(
-	req ctrl.Request,
-	forecast map[time.Time]float64,
-	zone string,
-	pointTime time.Time,
-	providerType providers.ProviderType,
-	immutable bool,
-) (*corev1.ConfigMap, error) {
-
-	jsonData, err := json.Marshal(forecast)
-	if err != nil {
-		return nil, err
-	}
-
-	var buffer bytes.Buffer
-	encoder := gob.NewEncoder(&buffer)
-	if err := encoder.Encode(jsonData); err != nil {
-		return nil, err
-	}
-
-	data := map[string]string{
-		"provider":  string(providerType),
-		"zone":      zone,
-		"pointTime": pointTime.String(),
-	}
-
-	configMapName := fmt.Sprintf("%s-forecast", req.Name)
-
-	labels := map[string]string{
-		"app.kubernetes.io/name":       "carbonintensityissuer",
-		"app.kubernetes.io/instance":   configMapName,
-		"app.kubernetes.io/component":  "forecast",
-		"app.kubernetes.io/part-of":    "carbon",
-		"app.kubernetes.io/managed-by": "controller",
-		"app.kubernetes.io/created-by": "carbon",
-		labelProviderInstance:          req.Name,
-		labelProviderType:              string(providerType),
-		labelProviderZone:              zone,
-	}
-
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      configMapName,
-			Namespace: req.Namespace,
-			Labels:    labels,
-		},
-		Immutable: &immutable,
-		Data:      data,
-		BinaryData: map[string][]byte{
-			"BinaryData": buffer.Bytes(),
-		},
-	}
-
-	return configMap, nil
 }

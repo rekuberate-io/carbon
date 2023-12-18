@@ -96,7 +96,8 @@ func main() {
 	}
 
 	//Create an InfluxDb2 Client
-	influxDb2Token := os.Getenv("INFLUXDB2_TOKEN")
+	// TODO: investigate why creating an org requires an admin token
+	influxDb2Token := os.Getenv("INFLUXDB2_ADMIN_TOKEN")
 	influxDb2Url := os.Getenv("INFLUXDB2_URL_LOCAL")
 	influxDb2Client := influxdb2.NewClientWithOptions(influxDb2Url, influxDb2Token, influxdb2.DefaultOptions().SetBatchSize(24))
 	defer influxDb2Client.Close()
@@ -108,7 +109,7 @@ func main() {
 	}
 
 	if _, err := influxDb2Client.Health(context.Background()); err != nil {
-		setupLog.Error(err, "unable to set up influxdb2 client")
+		setupLog.Error(err, "unable to connect to influxdb2 client")
 		os.Exit(1)
 	}
 
