@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -97,12 +98,16 @@ func main() {
 	//Create an InfluxDb2 Client
 	influxDb2Token := os.Getenv("INFLUXDB2_TOKEN")
 	influxDb2Url := os.Getenv("INFLUXDB2_URL_LOCAL")
-	influxDb2Client := influxdb2.NewClientWithOptions(influxDb2Url, influxDb2Token,
-		influxdb2.DefaultOptions().SetBatchSize(24))
+	influxDb2Client := influxdb2.NewClientWithOptions(influxDb2Url, influxDb2Token, influxdb2.DefaultOptions().SetBatchSize(24))
 	defer influxDb2Client.Close()
 
 	if strings.TrimSpace(influxDb2Token) == "" || strings.TrimSpace(influxDb2Url) == "" {
 		err := fmt.Errorf("influxdb2 token or url is missing")
+		setupLog.Error(err, "unable to set up influxdb2 client")
+		os.Exit(1)
+	}
+
+	if _, err := influxDb2Client.Health(context.Background()); err != nil {
 		setupLog.Error(err, "unable to set up influxdb2 client")
 		os.Exit(1)
 	}
